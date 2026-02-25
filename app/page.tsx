@@ -56,7 +56,7 @@ export default function MinariVisualizer() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <a href="https://minari.farama.org/index.html" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-md bg-primary/20 flex items-center justify-center">
                 <svg
@@ -82,7 +82,7 @@ export default function MinariVisualizer() {
                 </p>
               </div>
             </div>
-          </div>
+          </a>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-[10px] font-mono hidden sm:flex">
               {MINARI_DATASETS.length} datasets
@@ -217,35 +217,6 @@ export default function MinariVisualizer() {
               </div>
             ) : (
               <div className="rounded-xl border border-border/50 bg-card p-6">
-                <div className="text-center py-8 mb-8">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="w-8 h-8 text-primary"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                      <path d="M2 12h20" />
-                    </svg>
-                  </div>
-                  <h2 className="text-lg font-bold text-foreground">
-                    Minari Dataset Explorer
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto leading-relaxed">
-                    Browse and visualize offline reinforcement learning datasets from the
-                    Farama Foundation. Select a dataset from the catalog to explore its
-                    metadata, episode statistics, and reward distributions.
-                  </p>
-                </div>
-
-                <Separator className="bg-border/30 mb-6" />
-
-                {/* Namespace overview chart */}
                 <NamespaceChart />
               </div>
             )}
