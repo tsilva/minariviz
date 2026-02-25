@@ -24,6 +24,8 @@ import { RewardDistributionChart } from "./charts/reward-distribution"
 import { EpisodeLengthChart } from "./charts/episode-length"
 import { CumulativeRewardsChart } from "./charts/cumulative-rewards"
 import { RewardSummaryChart } from "./charts/reward-summary"
+import { ObservationViewer } from "./observations/observation-viewer"
+import { supportsObservationRendering } from "@/lib/observation-utils"
 import { useState } from "react"
 
 interface DatasetDetailProps {
@@ -248,6 +250,11 @@ export function DatasetDetail({ dataset }: DatasetDetailProps) {
           <TabsTrigger value="summary" className="text-xs flex-1">
             Summary
           </TabsTrigger>
+          {supportsObservationRendering(dataset) && (
+            <TabsTrigger value="observations" className="text-xs flex-1">
+              Observations
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="rewards" className="mt-4">
           <RewardDistributionChart data={dataset.episodeStats.rewardDistribution} />
@@ -261,6 +268,11 @@ export function DatasetDetail({ dataset }: DatasetDetailProps) {
         <TabsContent value="summary" className="mt-4">
           <RewardSummaryChart stats={dataset.episodeStats} />
         </TabsContent>
+        {supportsObservationRendering(dataset) && (
+          <TabsContent value="observations" className="mt-4">
+            <ObservationViewer datasetId={dataset.id} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )
