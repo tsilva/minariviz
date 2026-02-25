@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: minariviz-api
+    runtime: docker
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    plan: free
+    envVars:
+      - key: CORS_ORIGINS
+        value: https://minariviz.tsilva.eu,http://localhost:3000
