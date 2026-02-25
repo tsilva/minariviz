@@ -1,7 +1,7 @@
 export interface ObservationFrame {
   step: number
   episode: number
-  pixels: number[][]
+  imageUrl: string
   width: number
   height: number
 }
