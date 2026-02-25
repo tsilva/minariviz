@@ -1,10 +1,10 @@
 <div align="center">
   <img src="logo.png" alt="minariviz" width="512"/>
 
+  [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://minariviz.tsilva.eu/)
   [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
-  [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://minariviz.tsilva.eu/)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
   **🔬 Explore, filter, and visualize Minari offline reinforcement learning datasets in your browser 📊**
