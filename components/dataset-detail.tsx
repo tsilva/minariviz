@@ -24,6 +24,7 @@ import { RewardDistributionChart } from "./charts/reward-distribution"
 import { EpisodeLengthChart } from "./charts/episode-length"
 import { CumulativeRewardsChart } from "./charts/cumulative-rewards"
 import { RewardSummaryChart } from "./charts/reward-summary"
+import { ObservationPreview } from "./charts/observation-preview"
 import { useState } from "react"
 
 interface DatasetDetailProps {
@@ -234,8 +235,13 @@ export function DatasetDetail({ dataset }: DatasetDetailProps) {
       <Separator className="bg-border/50" />
 
       {/* Charts */}
-      <Tabs defaultValue="rewards" className="w-full">
+      <Tabs defaultValue={dataset.observationFrames?.length ? "observations" : "rewards"} className="w-full">
         <TabsList className="w-full bg-secondary/60 p-1">
+          {dataset.observationFrames && dataset.observationFrames.length > 0 && (
+            <TabsTrigger value="observations" className="text-xs flex-1">
+              Observations
+            </TabsTrigger>
+          )}
           <TabsTrigger value="rewards" className="text-xs flex-1">
             Reward Dist.
           </TabsTrigger>
@@ -249,6 +255,14 @@ export function DatasetDetail({ dataset }: DatasetDetailProps) {
             Summary
           </TabsTrigger>
         </TabsList>
+        {dataset.observationFrames && dataset.observationFrames.length > 0 && (
+          <TabsContent value="observations" className="mt-4">
+            <ObservationPreview
+              frames={dataset.observationFrames}
+              envName={dataset.envName}
+            />
+          </TabsContent>
+        )}
         <TabsContent value="rewards" className="mt-4">
           <RewardDistributionChart data={dataset.episodeStats.rewardDistribution} />
         </TabsContent>

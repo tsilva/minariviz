@@ -1,3 +1,11 @@
+export interface ObservationFrame {
+  step: number
+  episode: number
+  pixels: number[][]
+  width: number
+  height: number
+}
+
 export interface MinariDataset {
   id: string
   namespace: string
@@ -18,6 +26,7 @@ export interface MinariDataset {
   episodeStats: EpisodeStats
   downloads: number
   createdAt: string
+  observationFrames?: ObservationFrame[]
 }
 
 export interface EpisodeStats {
@@ -91,6 +100,209 @@ function makeStats(
     episodeLengthDistribution: generateEpisodeLengthDistribution(avgLen),
     cumulativeRewards: generateCumulativeRewards(episodes, mean, std),
   }
+}
+
+// -- Atari observation frame generators --
+
+type PixelGrid = number[][]
+
+function createGrid(w: number, h: number, bg: number[]): PixelGrid {
+  return Array.from({ length: h }, () => Array.from({ length: w }, () => [...bg]).flat())
+}
+
+function setPixel(grid: PixelGrid, x: number, y: number, w: number, r: number, g: number, b: number) {
+  if (x >= 0 && x < w && y >= 0 && y < grid.length) {
+    grid[y][x * 3] = r
+    grid[y][x * 3 + 1] = g
+    grid[y][x * 3 + 2] = b
+  }
+}
+
+function fillRect(grid: PixelGrid, x0: number, y0: number, rw: number, rh: number, w: number, r: number, g: number, b: number) {
+  for (let dy = 0; dy < rh; dy++) {
+    for (let dx = 0; dx < rw; dx++) {
+      setPixel(grid, x0 + dx, y0 + dy, w, r, g, b)
+    }
+  }
+}
+
+function generateBreakoutFrame(step: number, episode: number): ObservationFrame {
+  const W = 84, H = 84
+  const grid = createGrid(W, H, [0, 0, 0])
+  // Bricks
+  const colors = [[200, 50, 50], [200, 130, 50], [200, 200, 50], [50, 200, 50], [50, 100, 200]]
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 10; col++) {
+      const destroyed = Math.random() < (step / 5000)
+      if (!destroyed) {
+        const [cr, cg, cb] = colors[row]
+        fillRect(grid, col * 8 + 2, row * 4 + 6, 7, 3, W, cr, cg, cb)
+      }
+    }
+  }
+  // Paddle
+  const px = 20 + Math.round(Math.sin(step * 0.1 + episode) * 25)
+  fillRect(grid, px, 78, 16, 3, W, 180, 180, 220)
+  // Ball
+  const bx = 42 + Math.round(Math.sin(step * 0.3) * 30)
+  const by = 30 + Math.round(Math.cos(step * 0.25) * 30)
+  fillRect(grid, bx, by, 2, 2, W, 255, 255, 255)
+  return { step, episode, pixels: grid, width: W, height: H }
+}
+
+function generatePongFrame(step: number, episode: number): ObservationFrame {
+  const W = 84, H = 84
+  const grid = createGrid(W, H, [0, 0, 0])
+  // Center line
+  for (let y = 0; y < H; y += 4) fillRect(grid, 41, y, 2, 2, W, 80, 80, 80)
+  // Left paddle
+  const ly = 25 + Math.round(Math.sin(step * 0.08 + episode) * 20)
+  fillRect(grid, 6, ly, 3, 16, W, 92, 186, 92)
+  // Right paddle
+  const ry = 30 + Math.round(Math.cos(step * 0.1 + episode * 2) * 22)
+  fillRect(grid, 75, ry, 3, 16, W, 213, 130, 74)
+  // Ball
+  const bx = 20 + Math.round(((step * 3 + episode * 7) % 50))
+  const by = 15 + Math.round(Math.sin(step * 0.15) * 28) + 20
+  fillRect(grid, bx, by, 3, 3, W, 236, 236, 236)
+  // Score area
+  fillRect(grid, 0, 0, 84, 4, W, 30, 30, 30)
+  return { step, episode, pixels: grid, width: W, height: H }
+}
+
+function generateSpaceInvadersFrame(step: number, episode: number): ObservationFrame {
+  const W = 84, H = 84
+  const grid = createGrid(W, H, [0, 0, 0])
+  // Invaders grid
+  const invaderColors = [[220, 50, 50], [50, 220, 120], [100, 150, 255]]
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 8; col++) {
+      const alive = !((step + episode * 3) % (row * 8 + col + 3) === 0 && Math.random() < 0.4)
+      if (alive) {
+        const [cr, cg, cb] = invaderColors[row]
+        const ox = col * 10 + 3 + Math.round(Math.sin(step * 0.05) * 3)
+        fillRect(grid, ox, row * 8 + 8, 6, 5, W, cr, cg, cb)
+        // "antenna" pixels
+        setPixel(grid, ox + 1, row * 8 + 7, W, cr, cg, cb)
+        setPixel(grid, ox + 4, row * 8 + 7, W, cr, cg, cb)
+      }
+    }
+  }
+  // Player ship
+  const px = 35 + Math.round(Math.sin(step * 0.12 + episode) * 25)
+  fillRect(grid, px, 74, 10, 4, W, 50, 200, 50)
+  fillRect(grid, px + 4, 72, 2, 2, W, 50, 255, 50)
+  // Shields
+  for (let s = 0; s < 4; s++) {
+    const sx = s * 20 + 6
+    const damage = Math.min(5, Math.floor(step / 500))
+    fillRect(grid, sx, 62, 12, 6 - damage, W, 180, 120, 50)
+  }
+  // Bullet
+  if (step % 3 !== 0) {
+    const bulletY = 72 - ((step * 4) % 50)
+    fillRect(grid, px + 4, Math.max(5, bulletY), 2, 4, W, 255, 255, 100)
+  }
+  return { step, episode, pixels: grid, width: W, height: H }
+}
+
+function generateSeaquestFrame(step: number, episode: number): ObservationFrame {
+  const W = 84, H = 84
+  const grid = createGrid(W, H, [10, 20, 60])
+  // Water surface
+  for (let x = 0; x < W; x++) {
+    const waveY = 8 + Math.round(Math.sin(x * 0.3 + step * 0.1) * 2)
+    for (let y = 0; y < waveY; y++) setPixel(grid, x, y, W, 30, 60, 120)
+  }
+  // Submarine (player)
+  const subX = 30 + Math.round(Math.sin(step * 0.06 + episode) * 22)
+  const subY = 40 + Math.round(Math.sin(step * 0.08) * 15)
+  fillRect(grid, subX, subY, 14, 6, W, 200, 200, 60)
+  fillRect(grid, subX + 14, subY + 2, 4, 2, W, 200, 200, 60)
+  fillRect(grid, subX + 4, subY - 2, 2, 2, W, 180, 180, 50)
+  // Fish / enemies
+  for (let i = 0; i < 4; i++) {
+    const fx = ((step * (2 + i) + i * 30 + episode * 11) % 100) - 10
+    const fy = 20 + i * 15
+    fillRect(grid, fx, fy, 8, 4, W, 220, 80 + i * 30, 80)
+    setPixel(grid, fx + 8, fy + 1, W, 220, 80 + i * 30, 80)
+    setPixel(grid, fx + 8, fy + 2, W, 220, 80 + i * 30, 80)
+  }
+  // Bubbles
+  for (let b = 0; b < 6; b++) {
+    const bx = (b * 14 + step + episode * 5) % W
+    const by = (80 - (step + b * 20) % 70)
+    setPixel(grid, bx, by, W, 150, 200, 255)
+  }
+  // O2 bar
+  const o2 = Math.max(10, 60 - Math.floor(step / 100))
+  fillRect(grid, 2, 2, o2, 3, W, 50, 200, 255)
+  return { step, episode, pixels: grid, width: W, height: H }
+}
+
+function generateMontezumaFrame(step: number, episode: number): ObservationFrame {
+  const W = 84, H = 84
+  const grid = createGrid(W, H, [0, 0, 0])
+  // Room walls / platforms
+  fillRect(grid, 0, 78, 84, 6, W, 120, 70, 30) // floor
+  fillRect(grid, 0, 0, 84, 6, W, 120, 70, 30) // ceiling
+  fillRect(grid, 0, 0, 4, 84, W, 120, 70, 30) // left wall
+  fillRect(grid, 80, 0, 4, 84, W, 120, 70, 30) // right wall
+  // Platforms
+  fillRect(grid, 15, 55, 22, 3, W, 140, 90, 40)
+  fillRect(grid, 50, 42, 22, 3, W, 140, 90, 40)
+  fillRect(grid, 20, 28, 30, 3, W, 140, 90, 40)
+  // Ladder
+  for (let y = 42; y < 78; y += 2) {
+    fillRect(grid, 38, y, 2, 1, W, 100, 100, 180)
+    fillRect(grid, 44, y, 2, 1, W, 100, 100, 180)
+  }
+  for (let y = 42; y < 78; y += 5) {
+    fillRect(grid, 38, y, 8, 1, W, 100, 100, 180)
+  }
+  // Player character (Panama Joe)
+  const px = 20 + Math.round(Math.sin(step * 0.05 + episode) * 15)
+  const onPlat = step % 300 < 150
+  const py = onPlat ? 49 : 72
+  fillRect(grid, px, py, 5, 6, W, 220, 50, 50) // body
+  fillRect(grid, px + 1, py - 3, 3, 3, W, 255, 200, 150) // head
+  fillRect(grid, px, py - 4, 5, 1, W, 220, 220, 50) // hat
+  // Key
+  const keyX = 60 + Math.round(Math.sin(step * 0.02) * 5)
+  fillRect(grid, keyX, 36, 4, 4, W, 255, 220, 50)
+  setPixel(grid, keyX + 4, 38, W, 255, 220, 50)
+  setPixel(grid, keyX + 5, 38, W, 255, 220, 50)
+  // Skull (enemy)
+  const skullX = (step * 2 + episode * 13) % 60 + 10
+  fillRect(grid, skullX, 72, 5, 5, W, 200, 200, 200)
+  setPixel(grid, skullX + 1, 73, W, 0, 0, 0)
+  setPixel(grid, skullX + 3, 73, W, 0, 0, 0)
+  // Score
+  fillRect(grid, 0, 0, 84, 5, W, 0, 0, 0)
+  return { step, episode, pixels: grid, width: W, height: H }
+}
+
+type FrameGenerator = (step: number, episode: number) => ObservationFrame
+
+const ATARI_GENERATORS: Record<string, FrameGenerator> = {
+  "Breakout": generateBreakoutFrame,
+  "Pong": generatePongFrame,
+  "Space Invaders": generateSpaceInvadersFrame,
+  "Seaquest": generateSeaquestFrame,
+  "Montezuma Revenge": generateMontezumaFrame,
+}
+
+function generateAtariFrames(envName: string, totalSteps: number, totalEpisodes: number): ObservationFrame[] {
+  const gen = ATARI_GENERATORS[envName]
+  if (!gen) return []
+  const frames: ObservationFrame[] = []
+  const numFrames = 12
+  for (let i = 0; i < numFrames; i++) {
+    const ep = Math.floor(Math.random() * Math.min(totalEpisodes, 10))
+    const step = Math.floor((i / numFrames) * totalSteps * 0.01) + Math.floor(Math.random() * 100)
+    frames.push(gen(step, ep))
+  }
+  return frames
 }
 
 export const MINARI_DATASETS: MinariDataset[] = [
@@ -564,6 +776,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     episodeStats: makeStats(312.5, 89.2, 42.0, 520.0, 4583, 100),
     downloads: 3976,
     createdAt: "2025-03-22",
+    observationFrames: generateAtariFrames("Breakout", 458320, 100),
   },
   {
     id: "atari/pong/expert-v0",
@@ -585,6 +798,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     episodeStats: makeStats(19.8, 1.5, 14.0, 21.0, 1250, 100),
     downloads: 2840,
     createdAt: "2025-03-22",
+    observationFrames: generateAtariFrames("Pong", 125000, 100),
   },
   {
     id: "atari/spaceinvaders/expert-v0",
@@ -606,6 +820,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     episodeStats: makeStats(1285.0, 420.0, 280.0, 2450.0, 2105, 100),
     downloads: 2210,
     createdAt: "2025-03-22",
+    observationFrames: generateAtariFrames("Space Invaders", 210500, 100),
   },
   {
     id: "atari/seaquest/expert-v0",
@@ -627,6 +842,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     episodeStats: makeStats(2450.0, 850.0, 400.0, 5200.0, 3800, 100),
     downloads: 1680,
     createdAt: "2025-03-22",
+    observationFrames: generateAtariFrames("Seaquest", 380000, 100),
   },
   {
     id: "atari/montezumarevenge/expert-v0",
@@ -648,6 +864,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     episodeStats: makeStats(2100.0, 1800.0, 0.0, 8500.0, 5200, 100),
     downloads: 1950,
     createdAt: "2025-03-22",
+    observationFrames: generateAtariFrames("Montezuma Revenge", 520000, 100),
   },
   // MuJoCo
   {
