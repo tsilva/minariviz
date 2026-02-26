@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers.datasets import router as datasets_router
+from routers.datasets import router as datasets_router
 
 app = FastAPI(title="minariviz API", version="0.1.0")
 

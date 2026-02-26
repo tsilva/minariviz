@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
-from api.services.dataset_loader import (
+from services.dataset_loader import (
     get_episode_frames,
     get_episode_info,
     get_episode_list,
 )
-from api.utils.frame_encoder import encode_frame_batch
+from utils.frame_encoder import encode_frame_batch
 
 router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 
