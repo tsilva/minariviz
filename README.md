@@ -32,7 +32,7 @@
 - 🌙 **Dark mode** — toggle between light and dark themes
 - ⚡ **Zero backend** — fully client-side, instant load
 
-## 🚀 Quick Start
+## 🚀 Quick Start1
 
 ```bash
 # Clone the repository
@@ -54,7 +54,7 @@ Open [http://localhost:3000](http://localhost:3000) to explore the datasets.
 |-------|-----------|
 | Framework | [Next.js](https://nextjs.org/) 16 |
 | Language | [TypeScript](https://www.typescriptlang.org/) 5.7 |
-| Styling | [Tailwind CSS](https://tailwindcss.com/) 4 |
+| Styling | [Tailwind CSS](https://tailwindcss.com/) 4 |1
 | Components | [shadcn/ui](https://ui.shadcn.com/) (Radix UI primitives) |
 | Charts | [Recharts](https://recharts.org/) |
 | Icons | [Lucide React](https://lucide.dev/) |
