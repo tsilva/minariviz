@@ -1,9 +1,11 @@
+import io
 from contextlib import contextmanager
 from pathlib import Path
 
 import h5py
 import minari
 import numpy as np
+from PIL import Image
 
 
 def _hdf5_path(dataset_id: str) -> Path:
@@ -44,6 +46,15 @@ def _resolve_obs_dataset(ep_group: h5py.Group) -> h5py.Dataset:
     return obs[first_key]
 
 
+def _decode_vlen_frames(raw_entries: np.ndarray) -> np.ndarray:
+    """Decode variable-length byte arrays (JPEG-compressed observations) into image frames."""
+    frames = []
+    for entry in raw_entries:
+        img = Image.open(io.BytesIO(bytes(entry)))
+        frames.append(np.asarray(img))
+    return np.stack(frames)
+
+
 def get_episode_list(dataset_id: str) -> list[dict]:
     """Get list of episodes with their lengths (metadata only, no array loading)."""
     with _open_hdf5(dataset_id) as f:
@@ -67,11 +78,18 @@ def get_episode_info(dataset_id: str, episode_id: int) -> dict:
         obs_ds = _resolve_obs_dataset(ep_group)
         rewards = ep_group["rewards"][:]
 
+        if obs_ds.dtype == object:
+            # Compressed observations — decode one frame to get shape
+            sample = np.asarray(Image.open(io.BytesIO(bytes(obs_ds[0]))))
+            obs_shape = list(sample.shape)
+        else:
+            obs_shape = list(obs_ds.shape[1:])
+
         return {
             "id": episode_id,
             "length": obs_ds.shape[0],
             "total_reward": float(np.sum(rewards)),
-            "observation_shape": list(obs_ds.shape[1:]),
+            "observation_shape": obs_shape,
         }
 
 
@@ -83,7 +101,7 @@ def get_episode_frames(
 ) -> np.ndarray:
     """Get a slice of observation frames via HDF5 hyperslab read.
 
-    Only reads the requested frames from disk (~12MB for 120 Atari RGB frames).
+    Handles both raw numeric arrays and JPEG-compressed (object dtype) observations.
     """
     with _open_hdf5(dataset_id) as f:
         ep_key = f"episode_{episode_id}"
@@ -92,7 +110,12 @@ def get_episode_frames(
 
         obs_ds = _resolve_obs_dataset(f[ep_key])
         end = min(start + count, obs_ds.shape[0])
-        frames = obs_ds[start:end]
+        raw = obs_ds[start:end]
+
+        if raw.dtype == object:
+            frames = _decode_vlen_frames(raw)
+        else:
+            frames = raw
 
         if frames.dtype != np.uint8:
             frames = np.clip(frames, 0, 255).astype(np.uint8)
