@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
@@ -7,6 +9,8 @@ from services.hdf5_reader import (
     get_episode_list,
 )
 from utils.frame_encoder import encode_frame_batch
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 
@@ -43,5 +47,8 @@ def episode_frames(
             media_type="application/octet-stream",
             headers={"X-Frame-Count": str(frames.shape[0])},
         )
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception("Failed to get frames for %s ep %s", dataset_id, episode_id)
+        raise HTTPException(status_code=500, detail=str(e))
