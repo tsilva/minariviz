@@ -12,7 +12,7 @@ import { OverviewStats } from "@/components/overview-stats"
 import { NamespaceChart } from "@/components/charts/namespace-chart"
 import { MINARI_DATASETS, NAMESPACES } from "@/lib/minari-data"
 import type { MinariDataset } from "@/lib/minari-data"
-import { Search, X, SlidersHorizontal, ExternalLink } from "lucide-react"
+import { Search, X, SlidersHorizontal, ExternalLink, Github } from "lucide-react"
 
 export default function MinariVisualizer() {
   const [search, setSearch] = useState("")
@@ -87,6 +87,16 @@ export default function MinariVisualizer() {
             <Badge variant="outline" className="text-[10px] font-mono hidden sm:flex">
               {MINARI_DATASETS.length} datasets
             </Badge>
+            <Button variant="outline" size="sm" className="text-xs h-8" asChild>
+              <a
+                href="https://github.com/tsilva/minariviz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Github className="w-3 h-3 mr-1.5" />
+                GitHub
+              </a>
+            </Button>
             <Button variant="outline" size="sm" className="text-xs h-8" asChild>
               <a
                 href="https://minari.farama.org"
