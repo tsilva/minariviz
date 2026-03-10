@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://minariviz.tsilva.eu/sitemap.xml
