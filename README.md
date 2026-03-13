@@ -31,6 +31,7 @@
 - 🥧 **Namespace overview** — pie charts and bar charts showing dataset distribution across namespaces
 - 🌙 **Dark mode** — toggle between light and dark themes
 - ⚡ **Zero backend** — fully client-side, instant load
+- 📈 **Traffic analytics** — Google Analytics 4 support via `NEXT_PUBLIC_GA_MEASUREMENT_ID`
 
 ## 🚀 Quick Start1
 
@@ -48,6 +49,8 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) to explore the datasets.
 
+To enable Google Analytics 4 locally, set `NEXT_PUBLIC_GA_MEASUREMENT_ID` in your environment before starting the app.
+
 ## 📦 Tech Stack
 
 | Layer | Technology |
@@ -58,7 +61,7 @@ Open [http://localhost:3000](http://localhost:3000) to explore the datasets.
 | Components | [shadcn/ui](https://ui.shadcn.com/) (Radix UI primitives) |
 | Charts | [Recharts](https://recharts.org/) |
 | Icons | [Lucide React](https://lucide.dev/) |
-| Analytics | [Vercel Analytics](https://vercel.com/analytics) |
+| Analytics | [Vercel Analytics](https://vercel.com/analytics) + Google Analytics 4 |
 
 ## 📁 Project Structure
 

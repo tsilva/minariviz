@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { GoogleAnalytics } from '@/components/google-analytics'
 import './globals.css'
 
 const SITE_URL = "https://minariviz.tsilva.eu";
@@ -9,6 +10,7 @@ const SITE_DESCRIPTION = "Browse and visualize Minari offline reinforcement lear
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 export const metadata: Metadata = {
   title: SITE_TITLE,
@@ -109,6 +111,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         {children}
+        {GA_MEASUREMENT_ID ? <GoogleAnalytics measurementId={GA_MEASUREMENT_ID} /> : null}
         <Analytics />
       </body>
     </html>
