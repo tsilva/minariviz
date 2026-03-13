@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Suspense } from 'react'
 import { GoogleAnalytics } from '@/components/google-analytics'
 import './globals.css'
 
@@ -111,7 +112,11 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         {children}
-        {GA_MEASUREMENT_ID ? <GoogleAnalytics measurementId={GA_MEASUREMENT_ID} /> : null}
+        {GA_MEASUREMENT_ID ? (
+          <Suspense fallback={null}>
+            <GoogleAnalytics measurementId={GA_MEASUREMENT_ID} />
+          </Suspense>
+        ) : null}
         <Analytics />
       </body>
     </html>
