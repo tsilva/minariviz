@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="logo.png" alt="minariviz" width="512"/>
+  <img src="https://raw.githubusercontent.com/tsilva/minariviz/main/logo.png" alt="minariviz" width="512"/>
 
   [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://minariviz.tsilva.eu/)
   [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
@@ -32,6 +32,7 @@
 - 🌙 **Dark mode** — toggle between light and dark themes
 - ⚡ **Zero backend** — fully client-side, instant load
 - 📈 **Traffic analytics** — Google Analytics 4 support via `NEXT_PUBLIC_GA_MEASUREMENT_ID`
+- 🚨 **Error monitoring ready** — Sentry support for browser, server, edge, and App Router render errors
 
 ## 🚀 Quick Start1
 
@@ -50,6 +51,15 @@ pnpm dev
 Open [http://localhost:3000](http://localhost:3000) to explore the datasets.
 
 To enable Google Analytics 4 locally, set `NEXT_PUBLIC_GA_MEASUREMENT_ID` in your environment before starting the app.
+
+To enable Sentry locally or in production, set the following environment variables:
+
+- `NEXT_PUBLIC_SENTRY_DSN` for browser-side error reporting
+- `SENTRY_DSN` for server and route-handler error reporting
+- `SENTRY_ORG` and `SENTRY_PROJECT` for source map upload targeting
+- `SENTRY_AUTH_TOKEN` in CI or Vercel when you want production source maps uploaded
+
+An `.env.example` file is included with the expected keys.
 
 ## 📦 Tech Stack
 
