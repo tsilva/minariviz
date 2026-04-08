@@ -20,8 +20,8 @@ export function RewardDistributionChart({ data }: Props) {
       <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
         Reward Distribution
       </h4>
-      <div className="h-[220px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-[220px] w-full min-w-0">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
             <CartesianGrid
               strokeDasharray="3 3"

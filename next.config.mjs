@@ -1,4 +1,7 @@
+import { fileURLToPath } from "node:url"
 import { withSentryConfig } from "@sentry/nextjs"
+
+const projectRoot = fileURLToPath(new URL(".", import.meta.url))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -7,6 +10,9 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+  },
+  turbopack: {
+    root: projectRoot,
   },
 }
 

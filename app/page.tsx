@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import * as Sentry from "@sentry/nextjs"
+import { useEffect, useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,6 +20,28 @@ export default function MinariVisualizer() {
   const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([])
   const [selectedDataset, setSelectedDataset] = useState<MinariDataset | null>(null)
   const [showFilters, setShowFilters] = useState(true)
+  const [smokeTestSent, setSmokeTestSent] = useState(false)
+
+  useEffect(() => {
+    const smokeTestId = new URLSearchParams(window.location.search).get(
+      "__sentry_smoke_test"
+    )
+
+    if (!smokeTestId || smokeTestSent) {
+      return
+    }
+
+    setSmokeTestSent(true)
+    Sentry.captureException(new Error(`Sentry smoke test: ${smokeTestId}`), {
+      tags: {
+        smoke_test: "true",
+        smoke_test_surface: "app-page",
+      },
+      extra: {
+        smokeTestId,
+      },
+    })
+  }, [smokeTestSent])
 
   const filteredDatasets = useMemo(() => {
     return MINARI_DATASETS.filter((d) => {

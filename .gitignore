@@ -54,3 +54,4 @@ __v0_jsx-dev-runtime.ts
 .next/
 .env*.local
 
+.vercel
