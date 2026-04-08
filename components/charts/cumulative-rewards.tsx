@@ -20,8 +20,8 @@ export function CumulativeRewardsChart({ data }: Props) {
       <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
         Episode Rewards Over Time
       </h4>
-      <div className="h-[220px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-[220px] w-full min-w-0">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
           <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
             <defs>
               <linearGradient id="rewardGradient" x1="0" y1="0" x2="0" y2="1">
