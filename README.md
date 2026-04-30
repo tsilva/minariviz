@@ -1,112 +1,68 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/tsilva/minariviz/main/logo.png" alt="minariviz" width="512"/>
-
-  [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://minariviz.tsilva.eu/)
-  [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
-  [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+  <img src="./logo.png" alt="minariviz" width="420" />
 
   **🔬 Explore, filter, and visualize Minari offline reinforcement learning datasets in your browser 📊**
 
-  [Live Demo](https://minariviz.tsilva.eu/) · [Minari Docs](https://minari.farama.org/) · [Farama Foundation](https://farama.org/)
+  [Live Demo](https://minariviz.tsilva.eu/)
 </div>
 
----
+minariviz is a browser-based explorer for Minari offline reinforcement learning datasets. It helps researchers and practitioners search the catalog, filter by namespace, compare metadata, and inspect reward and episode statistics without jumping between dataset docs.
 
-## 🧠 Overview
+The Next.js frontend includes the static dataset catalog and charts. A separate FastAPI service powers the observation viewer by downloading Minari datasets on demand, reading local HDF5 files, and returning batched JPEG frames to the browser.
 
-**The Pain:** Offline RL datasets are scattered across repositories with inconsistent metadata, making it hard to compare episode statistics, reward distributions, and environment configurations at a glance.
-
-**The Solution:** minariviz provides an interactive browser-based catalog for 40+ Minari datasets with real-time search, namespace filtering, and rich visual analytics — no setup required.
-
-**The Result:** Find the right dataset in seconds instead of reading documentation for hours. Compare reward distributions, episode lengths, and action spaces side by side.
-
-## ✨ Features
-
-- 🔍 **Real-time search** — full-text search across dataset IDs, environments, descriptions, and tags
-- 🏷️ **Namespace filtering** — browse by D4RL, MiniGrid, Atari, MuJoCo, MetaWorld, and WebAgents
-- 📊 **Visual analytics** — reward distributions, episode length histograms, cumulative reward charts, and summary statistics
-- 📋 **Dataset details** — action/observation spaces, episode stats, algorithm info, and one-click Python install commands
-- 🥧 **Namespace overview** — pie charts and bar charts showing dataset distribution across namespaces
-- 🌙 **Dark mode** — toggle between light and dark themes
-- ⚡ **Zero backend** — fully client-side, instant load
-- 📈 **Traffic analytics** — Google Analytics 4 support via `NEXT_PUBLIC_GA_MEASUREMENT_ID`
-- 🚨 **Error monitoring ready** — Sentry support for browser, server, edge, and App Router render errors
-
-## 🚀 Quick Start1
+## Install
 
 ```bash
-# Clone the repository
 git clone https://github.com/tsilva/minariviz.git
 cd minariviz
-
-# Install dependencies
 pnpm install
+```
 
-# Start the development server
+Start the frontend:
+
+```bash
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to explore the datasets.
+Open [http://localhost:3000](http://localhost:3000).
 
-To enable Google Analytics 4 locally, set `NEXT_PUBLIC_GA_MEASUREMENT_ID` in your environment before starting the app.
+To use the observation viewer locally, start the API in another shell:
 
-To enable Sentry locally or in production, set the following environment variables:
-
-- `NEXT_PUBLIC_SENTRY_DSN` for browser-side error reporting
-- `SENTRY_DSN` for server and route-handler error reporting
-- `SENTRY_ORG` and `SENTRY_PROJECT` for source map upload targeting
-- `SENTRY_AUTH_TOKEN` in CI or Vercel when you want production source maps uploaded
-
-An `.env.example` file is included with the expected keys.
-
-## 📦 Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | [Next.js](https://nextjs.org/) 16 |
-| Language | [TypeScript](https://www.typescriptlang.org/) 5.7 |
-| Styling | [Tailwind CSS](https://tailwindcss.com/) 4 |1
-| Components | [shadcn/ui](https://ui.shadcn.com/) (Radix UI primitives) |
-| Charts | [Recharts](https://recharts.org/) |
-| Icons | [Lucide React](https://lucide.dev/) |
-| Analytics | [Vercel Analytics](https://vercel.com/analytics) + Google Analytics 4 |
-
-## 📁 Project Structure
-
-```
-minariviz/
-├── app/                    # Next.js app directory
-│   ├── layout.tsx          # Root layout with metadata
-│   ├── page.tsx            # Main page entry point
-│   └── globals.css         # Global styles & CSS variables
-├── components/
-│   ├── charts/             # Recharts visualizations
-│   │   ├── namespace-chart.tsx
-│   │   ├── reward-distribution.tsx
-│   │   ├── episode-length.tsx
-│   │   ├── cumulative-rewards.tsx
-│   │   └── reward-summary.tsx
-│   ├── dataset-card.tsx    # Dataset list item
-│   ├── dataset-detail.tsx  # Full detail view with tabs
-│   ├── overview-stats.tsx  # Top stats bar
-│   └── ui/                 # shadcn/ui components
-├── lib/
-│   ├── minari-data.ts      # Dataset definitions & models
-│   └── utils.ts            # Utility functions
-└── public/                 # Static assets
+```bash
+cd api
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-## 🏗️ Available Scripts
+## Commands
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start development server |
-| `pnpm build` | Create production build |
-| `pnpm start` | Start production server |
-| `pnpm lint` | Run ESLint |
+```bash
+pnpm dev       # start the Next.js development server
+pnpm build     # build the frontend for production
+pnpm start     # start the production Next.js server
+pnpm lint      # run ESLint
+```
 
-## 📜 License
+```bash
+cd api
+uvicorn main:app --host 0.0.0.0 --port 8000  # start the FastAPI service
+```
 
-[MIT](LICENSE) — Tiago Silva
+## Notes
+
+- Use `pnpm` for JavaScript dependencies; the repo enforces it during `preinstall`.
+- `NEXT_PUBLIC_API_URL` points the frontend to the API. It defaults to `http://localhost:8000`.
+- The API downloads datasets through Minari and stores them under `~/.minari/datasets`.
+- The observation viewer requires the Python API server. The static catalog, filtering, and charts run in the frontend.
+- Optional analytics and monitoring keys are listed in `.env.example`: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`, and `SENTRY_ENVIRONMENT`.
+- Vercel builds the Next.js frontend. `render.yaml` defines a Docker-backed Render service for the FastAPI API.
+
+## Architecture
+
+![minariviz architecture diagram](./architecture.png)
+
+## License
+
+[MIT](LICENSE)
