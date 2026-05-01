@@ -57,7 +57,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000  # start the FastAPI service
 - The API downloads datasets through Minari and stores them under `~/.minari/datasets`.
 - The observation viewer requires the Python API server. The static catalog, filtering, and charts run in the frontend.
 - Optional analytics and monitoring keys are listed in `.env.example`: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`, and `SENTRY_ENVIRONMENT`.
-- Vercel builds the Next.js frontend. `render.yaml` defines a Docker-backed Render service for the FastAPI API.
+- Vercel builds the Next.js frontend. `render.yaml` defines a Docker-backed Render service for the FastAPI API, with `/api/health` configured as the Render health check path.
 
 ## Architecture
 
