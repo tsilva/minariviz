@@ -20,6 +20,15 @@ app.add_middleware(
 app.include_router(datasets_router)
 
 
+@app.get("/")
+def root():
+    return {
+        "name": "minariviz API",
+        "status": "ok",
+        "health": "/api/health",
+    }
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
