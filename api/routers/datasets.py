@@ -8,7 +8,7 @@ from services.hdf5_reader import (
     get_episode_info,
     get_episode_list,
 )
-from utils.frame_encoder import encode_frame_batch
+from utils.frame_encoder import UnsupportedFrameShapeError, encode_frame_batch
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,8 @@ def episode_frames(
             media_type="application/octet-stream",
             headers={"X-Frame-Count": str(frames.shape[0])},
         )
+    except UnsupportedFrameShapeError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:

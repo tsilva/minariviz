@@ -5,6 +5,10 @@ import numpy as np
 from PIL import Image
 
 
+class UnsupportedFrameShapeError(ValueError):
+    """Raised when an observation cannot be represented as an image frame."""
+
+
 def encode_frame_batch(frames: np.ndarray, quality: int = 75) -> bytes:
     """Encode a batch of frames as length-prefixed JPEGs.
 
@@ -25,8 +29,17 @@ def encode_frame_batch(frames: np.ndarray, quality: int = 75) -> bytes:
 
         if frame.ndim == 2:
             img = Image.fromarray(frame, mode="L")
-        else:
+        elif frame.ndim == 3 and frame.shape[2] == 1:
+            img = Image.fromarray(frame[:, :, 0], mode="L")
+        elif frame.ndim == 3 and frame.shape[2] == 3:
             img = Image.fromarray(frame, mode="RGB")
+        elif frame.ndim == 3 and frame.shape[2] == 4:
+            img = Image.fromarray(frame, mode="RGBA").convert("RGB")
+        else:
+            raise UnsupportedFrameShapeError(
+                "Observation frames must be 2D grayscale or 3D image arrays; "
+                f"got frame shape {frame.shape}"
+            )
 
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=quality)
