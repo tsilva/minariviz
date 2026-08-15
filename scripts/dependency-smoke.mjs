@@ -1,0 +1,83 @@
+import assert from "node:assert/strict"
+import fs from "node:fs"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
+import { join, resolve } from "node:path"
+
+const require = createRequire(import.meta.url)
+const virtualRequire = createRequire(
+  new URL("../node_modules/.pnpm/node_modules/security-smoke.cjs", import.meta.url),
+)
+const packageJson = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"))
+const lock = fs.readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8")
+
+for (const dependencies of [packageJson.dependencies, packageJson.devDependencies]) {
+  for (const specifier of Object.values(dependencies ?? {})) {
+    assert.doesNotMatch(specifier, /^(?:git(?:\+|:)|https?:|file:|link:|workspace:)/i)
+  }
+}
+assert.doesNotMatch(lock, /(?:git\+|github\.com\/|\b(?:file|link):|\btarball:)/i)
+
+for (const expected of [
+  "'@babel/core@7.29.7':",
+  "'@opentelemetry/core@2.10.0':",
+  "brace-expansion@1.1.18:",
+  "brace-expansion@5.0.9:",
+  "fast-uri@3.1.5:",
+  "nanoid@3.3.18:",
+  "postcss@8.5.23:",
+  "postcss@8.5.26:",
+]) {
+  assert.ok(lock.includes(expected), `missing fixed lock entry: ${expected}`)
+}
+
+const fastUri = virtualRequire("fast-uri")
+const validUri = fastUri.parse("https://trusted.example/path")
+assert.equal(validUri.error, undefined)
+assert.equal(validUri.host, "trusted.example")
+for (const maliciousUri of [
+  "https://trusted.example\\@evil.example/path",
+  "https:\\\\evil.example/path",
+]) {
+  assert.match(fastUri.parse(maliciousUri).error, /literal backslash/i)
+}
+
+const { expand } = virtualRequire("brace-expansion")
+assert.deepEqual(expand("dataset-{train,test}"), ["dataset-train", "dataset-test"])
+const expansionStarted = Date.now()
+assert.equal(expand("{}".repeat(40), { max: 1_000 }).length, 1)
+assert.equal(expand("{1..1000000000}", { max: 1_000 }).length, 1_000)
+assert.ok(Date.now() - expansionStarted < 1_000, "brace-expansion limits were not applied promptly")
+
+const { ROOT_CONTEXT, propagation } = virtualRequire("@opentelemetry/api")
+const { W3CBaggagePropagator } = virtualRequire("@opentelemetry/core")
+const oversizedBaggage = Array.from({ length: 1_000 }, (_, index) => `key${index}=value`).join(",")
+const extractedContext = new W3CBaggagePropagator().extract(
+  ROOT_CONTEXT,
+  { baggage: oversizedBaggage },
+  { get: (carrier, key) => carrier[key], keys: (carrier) => Object.keys(carrier) },
+)
+assert.equal(propagation.getBaggage(extractedContext).getAllEntries().length, 180)
+
+const temporaryDirectory = await mkdtemp(join(tmpdir(), "minariviz-postcss-"))
+const secretPath = join(temporaryDirectory, "secret.map")
+await writeFile(secretPath, "MINARIVIZ_SECRET_SENTINEL")
+const originalReadFileSync = fs.readFileSync
+let secretWasRead = false
+fs.readFileSync = function guardedRead(path, ...args) {
+  if (typeof path === "string" && resolve(path) === resolve(secretPath)) secretWasRead = true
+  return originalReadFileSync.call(this, path, ...args)
+}
+try {
+  const postcss = require("postcss")
+  const result = await postcss().process(
+    `a{color:red}\n/*# sourceMappingURL=${secretPath} */`,
+    { from: undefined },
+  )
+  assert.equal(result.css, "a{color:red}")
+  assert.equal(secretWasRead, false, "PostCSS followed an attacker-controlled source map path")
+} finally {
+  fs.readFileSync = originalReadFileSync
+  await rm(temporaryDirectory, { recursive: true })
+}
