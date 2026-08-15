@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  merge_group:
+    types:
+      - checks_requested
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v4.9.0
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm audit --audit-level low
+      - run: pnpm run test:deps
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm run build
+
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.0.0
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.4.0
+        with:
+          version: 0.11.13
+          enable-cache: true
+      - run: uv venv --python 3.11
+      - run: uv pip sync --python .venv/bin/python --require-hashes api/requirements.lock
+      - run: uvx --from pip-audit==2.9.0 pip-audit -r api/requirements.lock --no-deps --disable-pip --progress-spinner off
+      - run: uvx --from ruff==0.15.4 ruff check api
+      - run: .venv/bin/python -m compileall -q api
+      - name: Exercise API and frame boundaries
+        env:
+          PYTHONPATH: api
+        run: |
+          .venv/bin/python - <<'PY'
+          import inspect
+          import struct
+
+          import numpy as np
+
+          from main import app, health
+          from routers.datasets import episode_frames
+          from utils.frame_encoder import UnsupportedFrameShapeError, encode_frame_batch
+
+          assert health() == {"status": "ok"}
+          assert any(getattr(route, "path", None) == "/api/health" for route in app.routes)
+
+          encoded = encode_frame_batch(np.zeros((1, 2, 3, 3), dtype=np.uint8), quality=75)
+          length = struct.unpack("<I", encoded[:4])[0]
+          assert length == len(encoded) - 4
+          assert encoded[4:6] == bytes([255, 216])
+
+          try:
+              encode_frame_batch(np.zeros((1, 2, 3, 5), dtype=np.uint8))
+          except UnsupportedFrameShapeError:
+              pass
+          else:
+              raise AssertionError("invalid five-channel frame was accepted")
+
+          count_query = inspect.signature(episode_frames).parameters["count"].default
+          assert any(getattr(limit, "le", None) == 500 for limit in count_query.metadata)
+          PY
+      - run: docker build --tag minariviz-api-ci api

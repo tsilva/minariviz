@@ -49,7 +49,7 @@ export function EpisodeLengthChart({ data }: Props) {
                 color: "oklch(0.95 0 0)",
               }}
               labelFormatter={(v) => `Length: ${v}`}
-              formatter={(value: number) => [value, "Episodes"]}
+              formatter={(value) => [value ?? 0, "Episodes"]}
             />
             <Bar
               dataKey="count"
