@@ -60,7 +60,10 @@ export function CumulativeRewardsChart({ data }: Props) {
                 color: "oklch(0.95 0 0)",
               }}
               labelFormatter={(v) => `Episode ${v}`}
-              formatter={(value: number) => [value.toFixed(2), "Reward"]}
+              formatter={(value) => [
+                typeof value === "number" ? value.toFixed(2) : "0.00",
+                "Reward",
+              ]}
             />
             <Area
               type="monotone"

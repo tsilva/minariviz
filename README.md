@@ -32,7 +32,7 @@ To use the observation viewer locally, start the API in another shell:
 cd api
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.lock
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -43,6 +43,8 @@ pnpm dev       # start the Next.js development server
 pnpm build     # build the frontend for production
 pnpm start     # start the production Next.js server
 pnpm lint      # run ESLint
+pnpm typecheck # run the standalone TypeScript gate
+pnpm test:deps # exercise patched dependency security boundaries
 ```
 
 ```bash
@@ -53,6 +55,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000  # start the FastAPI service
 ## Notes
 
 - Use `pnpm` for JavaScript dependencies; the repo enforces it during `preinstall`.
+- The API container installs the hash-locked `api/requirements.lock`. Regenerate it with the `uv pip compile` command recorded in the lock header; that command excludes packages published in the preceding seven days.
 - `NEXT_PUBLIC_API_URL` points the frontend to the API. It defaults to `http://localhost:8000`.
 - The API downloads datasets through Minari and stores them under `~/.minari/datasets`.
 - The observation viewer requires the Python API server. The static catalog, filtering, and charts run in the frontend.

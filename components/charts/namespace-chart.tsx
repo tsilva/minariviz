@@ -92,7 +92,7 @@ export function NamespaceChart() {
                     fontSize: "12px",
                     color: "oklch(0.95 0 0)",
                   }}
-                  formatter={(value: number) => [`${value} datasets`, ""]}
+                  formatter={(value) => [`${value ?? 0} datasets`, ""]}
                 />
                 <Legend
                   wrapperStyle={{ fontSize: "11px" }}
@@ -144,7 +144,10 @@ export function NamespaceChart() {
                     fontSize: "12px",
                     color: "oklch(0.95 0 0)",
                   }}
-                  formatter={(value: number) => [formatNumber(value), "Total Episodes"]}
+                  formatter={(value) => [
+                    formatNumber(typeof value === "number" ? value : 0),
+                    "Total Episodes",
+                  ]}
                 />
                 <Bar
                   dataKey="episodes"
