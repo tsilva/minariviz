@@ -43,7 +43,14 @@ for (const maliciousUri of [
   assert.match(fastUri.parse(maliciousUri).error, /literal backslash/i)
 }
 
-const { expand } = virtualRequire("brace-expansion")
+const braceRequire = createRequire(
+  new URL(
+    "../node_modules/.pnpm/brace-expansion@5.0.9/node_modules/brace-expansion/package.json",
+    import.meta.url,
+  ),
+)
+const braceExpansion = braceRequire("brace-expansion")
+const expand = braceExpansion.expand ?? braceExpansion
 assert.deepEqual(expand("dataset-{train,test}"), ["dataset-train", "dataset-test"])
 const expansionStarted = Date.now()
 assert.equal(expand("{}".repeat(40), { max: 1_000 }).length, 1)
