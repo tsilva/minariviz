@@ -21,10 +21,10 @@ pnpm install
 Start the frontend:
 
 ```bash
-pnpm dev
+pnpm dev --port auto
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open the localhost URL printed by the server.
 
 To use the observation viewer locally, start the API in another shell:
 
@@ -61,14 +61,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000  # start the FastAPI service
 - The observation viewer requires the Python API server. The static catalog, filtering, and charts run in the frontend.
 - Optional analytics and monitoring keys are listed in `.env.example`: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`, and `SENTRY_ENVIRONMENT`.
 - Vercel builds the Next.js frontend. `render.yaml` defines a Docker-backed Render service for the FastAPI API, with `/api/health` configured as the Render health check path.
-
-## Local credentials
-
-Private local values declared in `.keyenv.toml` live in macOS Keychain. Run
-`keyenv doctor` to verify them and launch credential-dependent commands with
-`keyenv run -- <command>`. Python, Node, and their child processes receive the
-values through their normal environment APIs. Keep only public or non-secret
-configuration in dotenv files.
 
 ## Architecture
 

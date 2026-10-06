@@ -24,7 +24,7 @@ for (const expected of [
   "'@opentelemetry/core@2.10.0':",
   "brace-expansion@1.1.18:",
   "brace-expansion@5.0.9:",
-  "fast-uri@3.1.5:",
+  "fast-uri@3.1.8:",
   "nanoid@3.3.18:",
   "postcss@8.5.23:",
   "postcss@8.5.26:",

@@ -1,1 +1,8 @@
 api
+
+# Infisical supplies private credentials in Vercel.
+.env*
+**/.env*
+!**/.env.example
+!**/.env.*.example
+.codex/
