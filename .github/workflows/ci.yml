@@ -71,6 +71,10 @@ jobs:
       - run: uvx --from pip-audit==2.9.0 pip-audit -r api/requirements.lock --no-deps --disable-pip --progress-spinner off
       - run: uvx --from ruff==0.15.4 ruff check api
       - run: .venv/bin/python -m compileall -q api
+      - name: Test observation resource boundaries
+        env:
+          PYTHONPATH: api
+        run: .venv/bin/python -m unittest discover -s api
       - name: Exercise API and frame boundaries
         env:
           PYTHONPATH: api

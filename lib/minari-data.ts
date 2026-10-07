@@ -31,6 +31,8 @@ export interface EpisodeStats {
   cumulativeRewards: { episode: number; reward: number }[]
 }
 
+// Illustrative catalog data, not measurements from downloaded episodes.
+// Keep generated examples deterministic across server and browser rendering.
 function generateRewardDistribution(mean: number, std: number, min: number, max: number): { bin: string; count: number }[] {
   const bins = 12
   const range = max - min
@@ -42,7 +44,7 @@ function generateRewardDistribution(mean: number, std: number, min: number, max:
     const density = Math.exp(-0.5 * z * z)
     return {
       bin: binStart.toFixed(1),
-      count: Math.max(1, Math.round(density * 100 + Math.random() * 15)),
+      count: Math.max(1, Math.round(density * 100)),
     }
   })
 }
@@ -59,7 +61,7 @@ function generateEpisodeLengthDistribution(avgLen: number): { bin: string; count
     const density = Math.exp(-0.5 * z * z)
     return {
       bin: Math.round(binStart).toString(),
-      count: Math.max(1, Math.round(density * 80 + Math.random() * 10)),
+      count: Math.max(1, Math.round(density * 80)),
     }
   })
 }
@@ -69,7 +71,7 @@ function generateCumulativeRewards(numEpisodes: number, mean: number, std: numbe
   const step = Math.max(1, Math.floor(numEpisodes / sampleSize))
   return Array.from({ length: sampleSize }, (_, i) => ({
     episode: i * step,
-    reward: parseFloat((mean + (Math.random() - 0.5) * std * 2).toFixed(2)),
+    reward: parseFloat((mean + Math.sin(i * 1.7) * std).toFixed(2)),
   }))
 }
 

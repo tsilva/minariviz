@@ -14,6 +14,15 @@ export interface EpisodeInfo {
   observation_shape: number[]
 }
 
+async function observationError(response: Response): Promise<Error> {
+  const body = await response.json().catch(() => null)
+  return new Error(
+    typeof body?.detail === "string"
+      ? body.detail
+      : `Observations unavailable (HTTP ${response.status}). Please try again.`,
+  )
+}
+
 export async function checkApiHealth(signal?: AbortSignal): Promise<boolean> {
   try {
     const res = await fetch(`${BASE_URL}/api/health`, {
@@ -33,7 +42,7 @@ export async function fetchEpisodes(
   signal?: AbortSignal,
 ): Promise<EpisodeListItem[]> {
   const res = await fetch(`${BASE_URL}/api/datasets/${datasetId}/episodes`, { signal })
-  if (!res.ok) throw new Error(`Failed to fetch episodes: ${res.statusText}`)
+  if (!res.ok) throw await observationError(res)
   return res.json()
 }
 
@@ -46,8 +55,7 @@ export async function fetchEpisodeInfo(
     `${BASE_URL}/api/datasets/${datasetId}/episodes/${episodeId}/info`,
     { signal },
   )
-  if (!res.ok)
-    throw new Error(`Failed to fetch episode info: ${res.statusText}`)
+  if (!res.ok) throw await observationError(res)
   return res.json()
 }
 
@@ -66,7 +74,7 @@ export async function fetchFrameBatch(
   const res = await fetch(
     `${BASE_URL}/api/datasets/${datasetId}/episodes/${episodeId}/frames?${params}`,
   )
-  if (!res.ok) throw new Error(`Failed to fetch frames: ${res.statusText}`)
+  if (!res.ok) throw await observationError(res)
 
   const buffer = await res.arrayBuffer()
   return decodeBatchedFrames(buffer)

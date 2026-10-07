@@ -4,8 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.datasets import router as datasets_router
+from services.resource_limits import ObservationLimits
 
 app = FastAPI(title="minariviz API", version="0.1.0")
+app.add_middleware(ObservationLimits)
 
 origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 

@@ -15,7 +15,7 @@ export function RewardSummaryChart({ stats }: Props) {
   return (
     <div>
       <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-4">
-        Reward Statistics Summary
+        Reward Statistics Summary (Illustrative)
       </h4>
 
       <div className="space-y-5">

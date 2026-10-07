@@ -135,6 +135,11 @@ export default function MinariVisualizer() {
       </header>
 
       <main className="mx-auto max-w-[1600px] px-4 md:px-6 py-6">
+        <p className="mb-4 rounded-lg border border-border/50 bg-secondary/40 p-3 text-sm text-muted-foreground">
+          <strong className="text-foreground">Illustrative catalog.</strong>{" "}
+          Catalog numbers and charts are examples, not verified dataset measurements.
+          The observation viewer reads actual downloaded episodes.
+        </p>
         {/* Overview Stats */}
         <OverviewStats />
 

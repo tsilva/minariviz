@@ -1,24 +1,19 @@
 import io
+from collections.abc import Iterable
 from contextlib import contextmanager
-from pathlib import Path
 
 import h5py
-import minari
 import numpy as np
 from PIL import Image
 
-
-def _hdf5_path(dataset_id: str) -> Path:
-    """Return the path to the dataset's HDF5 file."""
-    return Path.home() / ".minari" / "datasets" / dataset_id / "data" / "main_data.hdf5"
-
-
-def _ensure_downloaded(dataset_id: str) -> Path:
-    """Download dataset if not already present, return HDF5 path."""
-    path = _hdf5_path(dataset_id)
-    if not path.exists():
-        minari.load_dataset(dataset_id, download=True)
-    return path
+from services.dataset_cache import ensure_downloaded as _ensure_downloaded
+from services.resource_limits import (
+    MAX_BATCH_BYTES,
+    MAX_EPISODES,
+    MAX_FRAME_PIXELS,
+    MAX_REWARD_BYTES,
+    ResourceLimitError,
+)
 
 
 @contextmanager
@@ -46,12 +41,27 @@ def _resolve_obs_dataset(ep_group: h5py.Group) -> h5py.Dataset:
     return obs[first_key]
 
 
-def _decode_vlen_frames(raw_entries: np.ndarray) -> np.ndarray:
+def _decode_vlen_frames(raw_entries: Iterable) -> np.ndarray:
     """Decode variable-length byte arrays (JPEG-compressed observations) into image frames."""
     frames = []
+    total_bytes = 0
     for entry in raw_entries:
-        img = Image.open(io.BytesIO(bytes(entry)))
-        frames.append(np.asarray(img))
+        with Image.open(io.BytesIO(bytes(entry))) as img:
+            if img.width * img.height > MAX_FRAME_PIXELS:
+                raise ResourceLimitError(
+                    "Observation frame exceeds this server's pixel limit."
+                )
+            # Budget before decoding, including a conservative four bytes per pixel.
+            estimated_bytes = img.width * img.height * max(4, len(img.getbands()))
+            if total_bytes + estimated_bytes > MAX_BATCH_BYTES:
+                raise ResourceLimitError(
+                    "Frame batch is too large; request fewer frames."
+                )
+            frame = np.asarray(img)
+            total_bytes += frame.nbytes
+            frames.append(frame)
+    if not frames:
+        raise ValueError("No frames in the requested range.")
     return np.stack(frames)
 
 
@@ -61,6 +71,10 @@ def get_episode_list(dataset_id: str) -> list[dict]:
         episodes = []
         ep_idx = 0
         while f"episode_{ep_idx}" in f:
+            if ep_idx >= MAX_EPISODES:
+                raise ResourceLimitError(
+                    "Dataset has too many episodes for this server."
+                )
             obs_ds = _resolve_obs_dataset(f[f"episode_{ep_idx}"])
             episodes.append({"id": ep_idx, "length": obs_ds.shape[0]})
             ep_idx += 1
@@ -76,11 +90,16 @@ def get_episode_info(dataset_id: str, episode_id: int) -> dict:
 
         ep_group = f[ep_key]
         obs_ds = _resolve_obs_dataset(ep_group)
-        rewards = ep_group["rewards"][:]
+        reward_ds = ep_group["rewards"]
+        if reward_ds.size * reward_ds.dtype.itemsize > MAX_REWARD_BYTES:
+            raise ResourceLimitError(
+                "Episode rewards exceed this server's memory limit."
+            )
+        rewards = reward_ds[:]
 
         if obs_ds.dtype == object:
             # Compressed observations — decode one frame to get shape
-            sample = np.asarray(Image.open(io.BytesIO(bytes(obs_ds[0]))))
+            sample = _decode_vlen_frames([obs_ds[0]])[0]
             obs_shape = list(sample.shape)
         else:
             obs_shape = list(obs_ds.shape[1:])
@@ -109,13 +128,29 @@ def get_episode_frames(
             raise ValueError(f"Episode {episode_id} not found")
 
         obs_ds = _resolve_obs_dataset(f[ep_key])
+        if start >= obs_ds.shape[0]:
+            raise ValueError("No frames in the requested range.")
         end = min(start + count, obs_ds.shape[0])
-        raw = obs_ds[start:end]
-
-        if raw.dtype == object:
-            frames = _decode_vlen_frames(raw)
+        if obs_ds.dtype == object:
+            # Read and decode one entry at a time, so compressed entries cannot
+            # allocate an entire unbounded batch before the budget is checked.
+            frames = _decode_vlen_frames(obs_ds[index] for index in range(start, end))
         else:
-            frames = raw
+            elements_per_frame = int(np.prod(obs_ds.shape[1:], dtype=object))
+            if (end - start) * elements_per_frame * max(
+                obs_ds.dtype.itemsize, 1
+            ) > MAX_BATCH_BYTES:
+                raise ResourceLimitError(
+                    "Frame batch is too large; request fewer frames."
+                )
+            if (
+                len(obs_ds.shape) >= 3
+                and obs_ds.shape[1] * obs_ds.shape[2] > MAX_FRAME_PIXELS
+            ):
+                raise ResourceLimitError(
+                    "Observation frame exceeds this server's pixel limit."
+                )
+            frames = obs_ds[start:end]
 
         if frames.dtype != np.uint8:
             frames = np.clip(frames, 0, 255).astype(np.uint8)

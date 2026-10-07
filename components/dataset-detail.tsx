@@ -235,6 +235,11 @@ export function DatasetDetail({ dataset }: DatasetDetailProps) {
 
       <Separator className="bg-border/50" />
 
+      <p className="text-xs text-muted-foreground">
+        <strong className="text-foreground">Illustrative statistics.</strong>{" "}
+        These charts use example values, not measured episodes. Observations and
+        their episode rewards come from the downloaded dataset.
+      </p>
       {/* Charts */}
       <Tabs defaultValue="rewards" className="w-full">
         <TabsList className="w-full bg-secondary/60 p-1">
@@ -245,7 +250,7 @@ export function DatasetDetail({ dataset }: DatasetDetailProps) {
             Ep. Lengths
           </TabsTrigger>
           <TabsTrigger value="cumulative" className="text-xs flex-1">
-            Cumulative
+            Episode Rewards
           </TabsTrigger>
           <TabsTrigger value="summary" className="text-xs flex-1">
             Summary

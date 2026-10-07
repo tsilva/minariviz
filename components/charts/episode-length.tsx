@@ -18,7 +18,7 @@ export function EpisodeLengthChart({ data }: Props) {
   return (
     <div>
       <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
-        Episode Length Distribution
+        Episode Length Distribution (Illustrative)
       </h4>
       <div className="h-[220px] w-full min-w-0">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
