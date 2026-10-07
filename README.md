@@ -1,10 +1,12 @@
-<div align="center">
+<p align="center">
   <img src="./logo.png" alt="minariviz" width="420" />
+  <br />
+  <!-- repo-tagline:start -->
+  <strong>🔬 Explore and visualize Minari offline reinforcement learning datasets 📊</strong>
+  <!-- repo-tagline:end -->
+</p>
 
-  **🔬 Explore, filter, and visualize Minari offline reinforcement learning datasets in your browser 📊**
-
-  [Live Demo](https://minariviz.tsilva.eu/)
-</div>
+[Live Demo](https://minariviz.tsilva.eu/)
 
 minariviz is a browser-based explorer for Minari offline reinforcement learning datasets. It helps researchers and practitioners search the catalog, filter by namespace, compare metadata, and inspect reward and episode statistics without jumping between dataset docs.
 
