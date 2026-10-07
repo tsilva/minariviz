@@ -270,7 +270,7 @@ export function DatasetDetail({ dataset }: DatasetDetailProps) {
         </TabsContent>
         {supportsObservationRendering(dataset) && (
           <TabsContent value="observations" className="mt-4">
-            <ObservationViewer datasetId={dataset.id} />
+            <ObservationViewer key={dataset.id} datasetId={dataset.id} />
           </TabsContent>
         )}
       </Tabs>

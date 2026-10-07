@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Terminal } from "lucide-react"
 import { checkApiHealth, fetchEpisodes, fetchEpisodeInfo } from "@/lib/api"
 import type { EpisodeListItem, EpisodeInfo } from "@/lib/api"
@@ -17,6 +18,8 @@ interface ObservationViewerProps {
 
 export function ObservationViewer({ datasetId }: ObservationViewerProps) {
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const [episodesLoading, setEpisodesLoading] = useState(false)
   const [episodes, setEpisodes] = useState<EpisodeListItem[]>([])
   const [selectedEpisode, setSelectedEpisode] = useState<number | null>(null)
   const [episodeInfo, setEpisodeInfo] = useState<EpisodeInfo | null>(null)
@@ -39,28 +42,52 @@ export function ObservationViewer({ datasetId }: ObservationViewerProps) {
 
   // Check API availability on mount
   useEffect(() => {
-    checkApiHealth().then(setApiAvailable)
-  }, [])
+    const controller = new AbortController()
+    setApiAvailable(null)
+    checkApiHealth(controller.signal).then((available) => {
+      if (!controller.signal.aborted) setApiAvailable(available)
+    })
+    return () => controller.abort()
+  }, [attempt])
 
   // Load episodes when API is available
   useEffect(() => {
     if (!apiAvailable) return
+    const controller = new AbortController()
+    setEpisodesLoading(true)
     setLoadError(null)
-    fetchEpisodes(datasetId)
-      .then(setEpisodes)
-      .catch((e) => setLoadError(e.message))
+    fetchEpisodes(datasetId, controller.signal)
+      .then((items) => {
+        if (controller.signal.aborted) return
+        setEpisodes(items)
+        setSelectedEpisode(items[0]?.id ?? null)
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) setLoadError(e.message)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setEpisodesLoading(false)
+      })
+    return () => controller.abort()
   }, [apiAvailable, datasetId])
 
   // Load episode info when selected
   useEffect(() => {
-    if (selectedEpisode === null) return
+    if (!apiAvailable || selectedEpisode === null) return
+    const controller = new AbortController()
     setCurrentFrame(0)
     setIsPlaying(false)
     setEpisodeInfo(null)
-    fetchEpisodeInfo(datasetId, selectedEpisode)
-      .then(setEpisodeInfo)
-      .catch((e) => setLoadError(e.message))
-  }, [datasetId, selectedEpisode])
+    setLoadError(null)
+    fetchEpisodeInfo(datasetId, selectedEpisode, controller.signal)
+      .then((info) => {
+        if (!controller.signal.aborted) setEpisodeInfo(info)
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) setLoadError(e.message)
+      })
+    return () => controller.abort()
+  }, [apiAvailable, datasetId, selectedEpisode])
 
   // Playback loop
   useEffect(() => {
@@ -142,7 +169,9 @@ export function ObservationViewer({ datasetId }: ObservationViewerProps) {
   if (apiAvailable === null) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-sm text-muted-foreground">Checking API availability...</p>
+        <p role="status" className="text-sm text-muted-foreground">
+          Connecting to observations… The server may take up to a minute to wake up.
+        </p>
       </div>
     )
   }
@@ -156,18 +185,15 @@ export function ObservationViewer({ datasetId }: ObservationViewerProps) {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-1">
-              API Server Required
+              Observations temporarily unavailable
             </h3>
             <p className="text-xs text-muted-foreground mb-3 max-w-xs">
-              The observation viewer requires the Python API server to load and
-              serve episode frames.
+              Could not connect to the observation server. Please try again in a moment.
             </p>
           </div>
-          <div className="rounded-lg bg-secondary/60 border border-border/50 p-3 font-mono text-xs text-foreground/80 w-full text-left">
-            <pre className="whitespace-pre">
-              {`cd api\npip install -r requirements.txt\nuvicorn main:app --reload`}
-            </pre>
-          </div>
+          <Button size="sm" onClick={() => setAttempt((value) => value + 1)}>
+            Retry connection
+          </Button>
         </div>
       </Card>
     )
@@ -175,6 +201,14 @@ export function ObservationViewer({ datasetId }: ObservationViewerProps) {
 
   return (
     <div className="space-y-4">
+      {episodesLoading && (
+        <p role="status" className="text-sm text-muted-foreground">
+          Loading episodes… The dataset may need to download on first use.
+        </p>
+      )}
+      {!episodesLoading && !loadError && episodes.length === 0 && (
+        <p className="text-sm text-muted-foreground">No episodes found in this dataset.</p>
+      )}
       <EpisodeSelector
         episodes={episodes}
         selectedEpisode={selectedEpisode}
@@ -182,7 +216,12 @@ export function ObservationViewer({ datasetId }: ObservationViewerProps) {
       />
 
       {loadError && (
-        <p className="text-xs text-destructive">{loadError}</p>
+        <div role="alert" className="space-y-2">
+          <p className="text-xs text-destructive">{loadError}</p>
+          <Button size="sm" onClick={() => setAttempt((value) => value + 1)}>
+            Retry connection
+          </Button>
+        </div>
       )}
 
       {selectedEpisode !== null && episodeInfo && (

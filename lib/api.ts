@@ -1,5 +1,6 @@
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+// Next.js proxies these requests to the configured Python API. Keeping requests
+// on the page's origin also supports previews and development with auto ports.
+const BASE_URL = ""
 
 export interface EpisodeListItem {
   id: number
@@ -13,12 +14,15 @@ export interface EpisodeInfo {
   observation_shape: number[]
 }
 
-export async function checkApiHealth(): Promise<boolean> {
+export async function checkApiHealth(signal?: AbortSignal): Promise<boolean> {
   try {
     const res = await fetch(`${BASE_URL}/api/health`, {
-      signal: AbortSignal.timeout(3000),
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(60_000)])
+        : AbortSignal.timeout(60_000),
+      cache: "no-store",
     })
-    return res.ok
+    return res.ok && (await res.json()).status === "ok"
   } catch {
     return false
   }
@@ -26,8 +30,9 @@ export async function checkApiHealth(): Promise<boolean> {
 
 export async function fetchEpisodes(
   datasetId: string,
+  signal?: AbortSignal,
 ): Promise<EpisodeListItem[]> {
-  const res = await fetch(`${BASE_URL}/api/datasets/${datasetId}/episodes`)
+  const res = await fetch(`${BASE_URL}/api/datasets/${datasetId}/episodes`, { signal })
   if (!res.ok) throw new Error(`Failed to fetch episodes: ${res.statusText}`)
   return res.json()
 }
@@ -35,9 +40,11 @@ export async function fetchEpisodes(
 export async function fetchEpisodeInfo(
   datasetId: string,
   episodeId: number,
+  signal?: AbortSignal,
 ): Promise<EpisodeInfo> {
   const res = await fetch(
     `${BASE_URL}/api/datasets/${datasetId}/episodes/${episodeId}/info`,
+    { signal },
   )
   if (!res.ok)
     throw new Error(`Failed to fetch episode info: ${res.statusText}`)

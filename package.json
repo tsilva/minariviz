@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit --pretty false",
     "test:deps": "node scripts/dependency-smoke.mjs",
+    "test:observations": "node scripts/test-observations.mjs",
     "dev:app": "node scripts/dev-server.mjs next dev",
     "build:secrets": "python3 scripts/infisical/run.py build",
     "start:secrets": "python3 scripts/infisical/run.py start",

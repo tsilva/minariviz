@@ -52,23 +52,23 @@ export function PlaybackControls({
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onGoToStart}>
+        <Button aria-label="First frame" variant="ghost" size="icon" className="h-8 w-8" onClick={onGoToStart}>
           <ChevronsLeft className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onStepBackward}>
+        <Button aria-label="Previous frame" variant="ghost" size="icon" className="h-8 w-8" onClick={onStepBackward}>
           <SkipBack className="w-4 h-4" />
         </Button>
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={onPlayPause}>
+        <Button aria-label={isPlaying ? "Pause" : "Play"} variant="outline" size="icon" className="h-8 w-8" onClick={onPlayPause}>
           {isPlaying ? (
             <Pause className="w-4 h-4" />
           ) : (
             <Play className="w-4 h-4" />
           )}
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onStepForward}>
+        <Button aria-label="Next frame" variant="ghost" size="icon" className="h-8 w-8" onClick={onStepForward}>
           <SkipForward className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onGoToEnd}>
+        <Button aria-label="Last frame" variant="ghost" size="icon" className="h-8 w-8" onClick={onGoToEnd}>
           <ChevronsRight className="w-4 h-4" />
         </Button>
       </div>
