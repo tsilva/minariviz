@@ -19,17 +19,25 @@ for (const dependencies of [packageJson.dependencies, packageJson.devDependencie
 }
 assert.doesNotMatch(lock, /(?:git\+|github\.com\/|\b(?:file|link):|\btarball:)/i)
 
-for (const expected of [
-  "'@babel/core@7.29.7':",
-  "'@opentelemetry/core@2.10.0':",
-  "brace-expansion@1.1.18:",
-  "brace-expansion@5.0.9:",
-  "fast-uri@3.1.8:",
-  "nanoid@3.3.18:",
-  "postcss@8.5.23:",
-  "postcss@8.5.26:",
-]) {
-  assert.ok(lock.includes(expected), `missing fixed lock entry: ${expected}`)
+const versionFloors = {
+  "@babel/core": "7.29.7",
+  "@opentelemetry/core": "2.10.0",
+  "brace-expansion": "1.1.21",
+  "fast-uri": "3.1.8",
+  "nanoid": "3.3.19",
+  "postcss": "8.5.23",
+}
+for (const [name, floor] of Object.entries(versionFloors)) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const matches = [...lock.matchAll(new RegExp(`^  ['"]?${escapedName}@([^:\\s('"]+)`, "gm"))]
+  assert.ok(matches.length, `missing lock entry: ${name}`)
+  for (const match of matches) {
+    const required = (name === "brace-expansion" && match[1].startsWith("5.")) ? "5.0.12" : floor
+    const actual = match[1].split(".").map(Number)
+    const minimum = required.split(".").map(Number)
+    const firstDifference = actual.findIndex((part, index) => part !== minimum[index])
+    assert.ok(firstDifference === -1 || actual[firstDifference] > minimum[firstDifference], `${name}@${match[1]} below security floor ${required}`)
+  }
 }
 
 const fastUri = virtualRequire("fast-uri")
@@ -45,7 +53,7 @@ for (const maliciousUri of [
 
 const braceRequire = createRequire(
   new URL(
-    "../node_modules/.pnpm/brace-expansion@5.0.9/node_modules/brace-expansion/package.json",
+    "../node_modules/.pnpm/brace-expansion@5.0.12/node_modules/brace-expansion/package.json",
     import.meta.url,
   ),
 )

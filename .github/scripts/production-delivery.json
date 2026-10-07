@@ -1,0 +1,19 @@
+{
+  "repository": "tsilva/minariviz",
+  "githubRepositoryId": 1166859429,
+  "identityId": "672c01c3-c025-40f9-b89b-5abcc03e8261",
+  "infisicalProjectId": "9b565353-dd07-4d6e-b699-532e1360e93c",
+  "secretNames": [
+    "NEXT_PUBLIC_API_URL",
+    "NEXT_PUBLIC_SENTRY_DSN",
+    "SENTRY_AUTH_TOKEN",
+    "SENTRY_DSN",
+    "SENTRY_ENVIRONMENT",
+    "SENTRY_ORG",
+    "SENTRY_PROJECT"
+  ],
+  "destination": "vercel",
+  "vercelProjectId": "prj_5DAokXNN12fA1l2deCCQGcLZCCr8",
+  "vercelProjectName": "minariviz",
+  "vercelTeamId": "team_eE2Iv7IMqPOx8ZVN2xNfR2f0"
+}
