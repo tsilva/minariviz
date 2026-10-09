@@ -29,7 +29,7 @@ const versionFloors = {
 }
 for (const [name, floor] of Object.entries(versionFloors)) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const matches = [...lock.matchAll(new RegExp(`^  ['"]?${escapedName}@([^:\\s('"]+)`, "gm"))]
+  const matches = [...lock.split("\npackages:\n")[1].split("\nsnapshots:\n")[0].matchAll(new RegExp(`^  ['"]?${escapedName}@([^:\\s('"]+)`, "gm"))]
   assert.ok(matches.length, `missing lock entry: ${name}`)
   for (const match of matches) {
     const required = (name === "brace-expansion" && match[1].startsWith("5.")) ? "5.0.12" : floor
