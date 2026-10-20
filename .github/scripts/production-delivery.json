@@ -15,5 +15,13 @@
   "destination": "vercel",
   "vercelProjectId": "prj_5DAokXNN12fA1l2deCCQGcLZCCr8",
   "vercelProjectName": "minariviz",
-  "vercelTeamId": "team_eE2Iv7IMqPOx8ZVN2xNfR2f0"
+  "vercelTeamId": "team_eE2Iv7IMqPOx8ZVN2xNfR2f0",
+  "configNames": [
+    "NEXT_PUBLIC_API_URL",
+    "NEXT_PUBLIC_SENTRY_DSN",
+    "SENTRY_DSN",
+    "SENTRY_ENVIRONMENT",
+    "SENTRY_ORG",
+    "SENTRY_PROJECT"
+  ]
 }
