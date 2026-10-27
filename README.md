@@ -63,7 +63,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000  # start the FastAPI service
 ## Notes
 
 - Use `pnpm` for JavaScript dependencies; the repo enforces it during `preinstall`.
-- The API container installs the hash-locked `api/requirements.lock`. Regenerate it with the `uv pip compile` command recorded in the lock header; that command excludes packages published in the preceding seven days.
+- The API container installs the hash-locked `api/requirements.lock`. Regenerate it with the `uv pip compile` command recorded in the lock header, quoting the age value as `--exclude-newer "7 days"`. `api/constraints.txt` retains the patched Certifi, Filelock and Pillow minimums; all other locked versions remain unchanged unless explicitly upgraded.
 - Observation requests use the frontend's `/api` proxy, so previews and auto-port development do not require extra CORS origins. `NEXT_PUBLIC_API_URL` configures the proxy destination at build time: the default is `http://localhost:8000` in development and `https://minariviz-api.onrender.com` in production. Production ignores loopback URLs left over from local dotenv settings. Set a hosted HTTP(S) API URL to override the production destination; redeploy after changing it.
 - The viewer allows up to a minute for the hosted API to wake up, opens the first episode automatically, and offers a retry if the connection fails. Loading a dataset for the first time may take longer while the API downloads it.
 - The API downloads only the catalog's observation HDF5 files from `farama-minari` on Hugging Face, pins downloads to their verified revision, and stores them under `~/.minari/datasets`. Run `PYTHONPATH=api python -m unittest discover -s api` from the repository root to check download, request, and memory boundaries.
