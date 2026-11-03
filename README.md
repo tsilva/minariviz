@@ -68,7 +68,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000  # start the FastAPI service
 - The viewer allows up to a minute for the hosted API to wake up, opens the first episode automatically, and offers a retry if the connection fails. Loading a dataset for the first time may take longer while the API downloads it.
 - The API downloads only the catalog's observation HDF5 files from `farama-minari` on Hugging Face, pins downloads to their verified revision, and stores them under `~/.minari/datasets`. Run `PYTHONPATH=api python -m unittest discover -s api` from the repository root to check download, request, and memory boundaries.
 - The observation viewer requires the Python API server. The static catalog, filtering, and charts run in the frontend.
-- Optional analytics and monitoring keys are listed in `.env.example`: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`, and `SENTRY_ENVIRONMENT`.
+- Optional analytics and monitoring keys are listed in `.env.example`: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_ENVIRONMENT`. Hosted Vercel builds use `SENTRY_AUTH_TOKEN` to upload source maps.
 - Vercel builds the Next.js frontend. `render.yaml` defines a Docker-backed Render service for the FastAPI API, with `/api/health` configured as the Render health check path.
 
 ## Public observation API limits

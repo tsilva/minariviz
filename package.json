@@ -13,7 +13,6 @@
     "test:deps": "node --test scripts/dependency-next-glob.test.mjs && node scripts/dependency-smoke.mjs",
     "test:observations": "node scripts/test-observations.mjs",
     "dev:app": "node scripts/dev-server.mjs next dev",
-    "build:secrets": "python3 scripts/infisical/run.py build",
     "start:secrets": "python3 scripts/infisical/run.py start",
     "secrets:check": "python3 scripts/infisical/run.py check",
     "test:secrets": "python3 -m unittest discover -s scripts/infisical -p test_secrets.py"
