@@ -60,16 +60,16 @@ export function DatasetCard({ dataset, isSelected, onClick }: DatasetCardProps) 
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Layers className="w-3 h-3 text-primary/70" />
           <span className="font-mono">{formatNumber(dataset.totalEpisodes)}</span>
-          <span className="text-muted-foreground/60">eps</span>
+          <span>eps</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Database className="w-3 h-3 text-primary/70" />
           <span className="font-mono">{formatNumber(dataset.totalSteps)}</span>
-          <span className="text-muted-foreground/60">steps</span>
+          <span>steps</span>
         </div>
       </div>
 
-      <div className="mt-2.5 flex items-center gap-1 text-[10px] text-muted-foreground/60">
+      <div className="mt-2.5 flex items-center gap-1 text-[10px] text-muted-foreground">
         <span className="font-mono">
           {dataset.actionSpaceType}({dataset.actionSpaceDims})
         </span>

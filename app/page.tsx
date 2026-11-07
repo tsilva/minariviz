@@ -145,7 +145,8 @@ export default function MinariVisualizer() {
 
         <div className="mt-6 flex flex-col lg:flex-row gap-6">
           {/* Left Panel: Catalog */}
-          <div className="w-full lg:w-[400px] xl:w-[440px] shrink-0 space-y-4">
+          <section aria-labelledby="dataset-catalog-heading" className="w-full lg:w-[400px] xl:w-[440px] shrink-0 space-y-4">
+            <h2 id="dataset-catalog-heading" className="sr-only">Dataset catalog</h2>
             {/* Search & Filters */}
             <div className="space-y-3">
               <div className="relative">
@@ -245,7 +246,7 @@ export default function MinariVisualizer() {
                 )}
               </div>
             </ScrollArea>
-          </div>
+          </section>
 
           {/* Right Panel: Detail */}
           <div className="flex-1 min-w-0">
