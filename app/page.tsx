@@ -1,7 +1,7 @@
 "use client"
 
 import * as Sentry from "@sentry/nextjs"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,7 @@ import { Search, X, SlidersHorizontal, ExternalLink, Github } from "lucide-react
 
 export default function MinariVisualizer() {
   const [search, setSearch] = useState("")
+  const searchInput = useRef<HTMLInputElement>(null)
   const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([])
   const [selectedDataset, setSelectedDataset] = useState<MinariDataset | null>(null)
   const [showFilters, setShowFilters] = useState(true)
@@ -67,8 +68,13 @@ export default function MinariVisualizer() {
     )
   }
 
-  function clearFilters() {
+  function clearSearch() {
     setSearch("")
+    searchInput.current?.focus()
+  }
+
+  function clearFilters() {
+    clearSearch()
     setSelectedNamespaces([])
   }
 
@@ -152,15 +158,19 @@ export default function MinariVisualizer() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
+                  ref={searchInput}
+                  aria-label="Search datasets, environments, and tags"
                   placeholder="Search datasets, environments, tags..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9 bg-card border-border/50 text-sm"
+                  className="pl-9 pr-9 h-9 bg-card border-border/50 text-sm"
                 />
                 {search && (
                   <button
-                    onClick={() => setSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    type="button"
+                    aria-label="Clear dataset search"
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
                   >
                     <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                   </button>
@@ -172,6 +182,8 @@ export default function MinariVisualizer() {
                   variant="ghost"
                   size="sm"
                   className="text-xs h-7 text-muted-foreground"
+                  aria-expanded={showFilters}
+                  aria-controls="dataset-namespace-filters"
                   onClick={() => setShowFilters(!showFilters)}
                 >
                   <SlidersHorizontal className="w-3 h-3 mr-1.5" />
@@ -190,30 +202,39 @@ export default function MinariVisualizer() {
                 )}
               </div>
 
-              {showFilters && (
-                <div className="flex flex-wrap gap-1.5">
-                  {NAMESPACES.map((ns) => (
-                    <Badge
-                      key={ns}
-                      variant={selectedNamespaces.includes(ns) ? "default" : "outline"}
-                      className={`cursor-pointer text-[11px] transition-all ${
-                        selectedNamespaces.includes(ns)
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
+              <div
+                id="dataset-namespace-filters"
+                role="group"
+                aria-label="Filter by dataset namespace"
+                className={showFilters ? "flex flex-wrap gap-1.5" : "hidden"}
+              >
+                {NAMESPACES.map((ns) => (
+                  <Badge
+                    key={ns}
+                    asChild
+                    variant={selectedNamespaces.includes(ns) ? "default" : "outline"}
+                    className={`cursor-pointer text-[11px] transition-all ${
+                      selectedNamespaces.includes(ns)
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={selectedNamespaces.includes(ns)}
                       onClick={() => toggleNamespace(ns)}
                     >
                       {ns}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+                    </button>
+                  </Badge>
+                ))}
+              </div>
             </div>
 
             <Separator className="bg-border/30" />
 
             {/* Results count */}
-            <p className="text-xs text-muted-foreground">
+            <p role="status" aria-atomic="true" className="text-xs text-muted-foreground">
               {filteredDatasets.length} dataset{filteredDatasets.length !== 1 ? "s" : ""}
               {hasFilters ? " matching filters" : ""}
             </p>
@@ -249,7 +270,7 @@ export default function MinariVisualizer() {
           </section>
 
           {/* Right Panel: Detail */}
-          <div className="flex-1 min-w-0">
+          <section id="dataset-inspector" aria-label={selectedDataset ? "Dataset details" : "Dataset overview"} className="flex-1 min-w-0">
             {selectedDataset ? (
               <div className="rounded-xl border border-border/50 bg-card p-6">
                 <DatasetDetail dataset={selectedDataset} />
@@ -259,7 +280,7 @@ export default function MinariVisualizer() {
                 <NamespaceChart />
               </div>
             )}
-          </div>
+          </section>
         </div>
       </main>
     </div>

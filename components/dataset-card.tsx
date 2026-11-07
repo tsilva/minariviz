@@ -24,8 +24,7 @@ const namespaceColors: Record<string, string> = {
 export function DatasetCard({ dataset, isSelected, onClick }: DatasetCardProps) {
   return (
     <Card
-      onClick={onClick}
-      className={`group cursor-pointer p-4 transition-all duration-200 border ${
+      className={`relative group cursor-pointer p-4 transition-all duration-200 border ${
         isSelected
           ? "border-primary/60 bg-primary/5 shadow-[0_0_20px_-5px] shadow-primary/20"
           : "border-border hover:border-primary/30 bg-card hover:bg-card/80"
@@ -47,7 +46,16 @@ export function DatasetCard({ dataset, isSelected, onClick }: DatasetCardProps) 
             </span>
           </div>
           <h3 className="font-semibold text-foreground text-sm leading-tight truncate">
-            {dataset.envName}
+            <button
+              type="button"
+              aria-current={isSelected || undefined}
+              aria-controls="dataset-inspector"
+              aria-label={`${dataset.envName}, ${dataset.datasetName}, ${dataset.namespace} v${dataset.version}`}
+              className="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring"
+              onClick={onClick}
+            >
+              {dataset.envName}
+            </button>
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5 font-medium">
             {dataset.datasetName}
