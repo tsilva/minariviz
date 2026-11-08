@@ -1,6 +1,6 @@
 "use client"
 
-import dynamic from "next/dynamic"
+import { NamespacePlots } from "./namespace-plots"
 import { MINARI_DATASETS, NAMESPACES, formatNumber } from "@/lib/minari-data"
 
 const COLORS = [
@@ -11,19 +11,6 @@ const COLORS = [
   "oklch(0.7 0.16 40)",
   "oklch(0.6 0.14 270)",
 ]
-
-const NamespacePlots = dynamic(
-  () => import("./namespace-plots").then((module) => module.NamespacePlots),
-  {
-    ssr: false,
-    loading: () => (
-      <div aria-hidden="true" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="h-[250px] rounded-lg border border-border/50 bg-secondary/20" />
-        <div className="h-[250px] rounded-lg border border-border/50 bg-secondary/20" />
-      </div>
-    ),
-  }
-)
 
 export function NamespaceChart() {
   const namespaceData = NAMESPACES.map((ns) => {

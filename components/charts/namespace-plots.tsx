@@ -1,19 +1,4 @@
-"use client"
-
 import { formatNumber } from "@/lib/minari-data"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from "recharts"
 
 interface NamespacePlotsProps {
   data: { name: string; datasets: number; episodes: number }[]
@@ -21,103 +6,95 @@ interface NamespacePlotsProps {
 }
 
 export function NamespacePlots({ data, colors }: NamespacePlotsProps) {
-  const pieData = data.map(({ name, datasets }) => ({ name, value: datasets }))
+  const namespaces = data.map((namespace, index) => ({
+    ...namespace,
+    color: colors[index % colors.length],
+  }))
+  const legend = [...namespaces].sort((a, b) => a.name.localeCompare(b.name, "en"))
+  const populated = namespaces.filter((namespace) => namespace.datasets > 0)
+  const total = populated.reduce((sum, namespace) => sum + namespace.datasets, 0)
+  const gap = 3
+  const availableAngle = 360 - populated.length * gap
+  const segments: (typeof populated[number] & { start: number; sweep: number })[] = []
+  let angle = gap / 2
+  for (const namespace of populated) {
+    const sweep = (namespace.datasets / total) * availableAngle
+    segments.push({ ...namespace, start: angle, sweep })
+    angle += sweep + gap
+  }
+
+  const maxEpisodes = Math.max(1, ...namespaces.map((namespace) => namespace.episodes))
+  const ticks = [0, 25, 50, 75, 100]
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Pie */}
-      <div className="h-[250px] min-w-0">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={250}>
-          <PieChart>
-            <Pie
-              data={pieData}
-              cx="50%"
-              cy="50%"
-              innerRadius={50}
-              outerRadius={80}
-              paddingAngle={3}
-              dataKey="value"
-              stroke="oklch(0.098 0.005 260)"
-              strokeWidth={2}
-            >
-              {pieData.map((_, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={colors[index % colors.length]}
-                  fillOpacity={0.85}
-                />
+      <figure aria-label="Dataset counts by namespace" className="flex h-[250px] min-w-0 flex-col">
+        <div className="grid flex-1 place-items-center">
+          <svg role="img" aria-label="Dataset counts by namespace" viewBox="0 0 164 164" width="164" height="164">
+            <g transform="translate(0 164) scale(1 -1)">
+              {segments.map(({ name, datasets, color, start, sweep }) => (
+                <circle
+                  key={name}
+                  cx={82}
+                  cy={82}
+                  r={65}
+                  pathLength={360}
+                  fill="none"
+                  stroke={color}
+                  strokeOpacity={0.85}
+                  strokeWidth={30}
+                  strokeDasharray={`${sweep} ${360 - sweep}`}
+                  transform={`rotate(${start} 82 82)`}
+                >
+                  <title>{name}: {datasets} dataset{datasets === 1 ? "" : "s"}</title>
+                </circle>
               ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "oklch(0.14 0.008 260)",
-                border: "1px solid oklch(0.22 0.01 260)",
-                borderRadius: "6px",
-                fontSize: "12px",
-                color: "oklch(0.95 0 0)",
-              }}
-              formatter={(value) => [`${value ?? 0} datasets`, ""]}
-            />
-            <Legend
-              wrapperStyle={{ fontSize: "11px" }}
-              formatter={(value) => (
-                <span style={{ color: "oklch(0.6 0.01 260)" }}>{value}</span>
-              )}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+            </g>
+          </svg>
+        </div>
+        <ul aria-label="Namespace colors" className="flex flex-wrap justify-center gap-x-2 gap-y-0.5 pb-1 text-[11px] text-muted-foreground">
+          {legend.map(({ name, color }) => (
+            <li key={name} className="flex items-center gap-1">
+              <span aria-hidden="true" className="h-2.5 w-3.5" style={{ backgroundColor: color }} />
+              {name}
+            </li>
+          ))}
+        </ul>
+      </figure>
 
-      {/* Bar */}
-      <div className="h-[250px] min-w-0">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={250}>
-          <BarChart
-            data={data}
-            layout="vertical"
-            margin={{ top: 0, right: 10, bottom: 0, left: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="oklch(0.22 0.01 260)"
-              horizontal={false}
-            />
-            <XAxis
-              type="number"
-              tick={{ fontSize: 10, fill: "oklch(0.6 0.01 260)" }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v) => formatNumber(v)}
-            />
-            <YAxis
-              dataKey="name"
-              type="category"
-              tick={{ fontSize: 10, fill: "oklch(0.6 0.01 260)" }}
-              tickLine={false}
-              axisLine={false}
-              width={80}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "oklch(0.14 0.008 260)",
-                border: "1px solid oklch(0.22 0.01 260)",
-                borderRadius: "6px",
-                fontSize: "12px",
-                color: "oklch(0.95 0 0)",
-              }}
-              formatter={(value) => [
-                formatNumber(typeof value === "number" ? value : 0),
-                "Total Episodes",
-              ]}
-            />
-            <Bar
-              dataKey="episodes"
-              fill="oklch(0.72 0.15 195)"
-              radius={[0, 4, 4, 0]}
-              fillOpacity={0.8}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <figure aria-label="Total episodes by namespace" className="h-[250px] min-w-0 pr-2.5">
+        <div className="relative h-[220px]">
+          <div aria-hidden="true" className="absolute inset-y-0 right-0 left-20 flex justify-between">
+            {ticks.map((tick) => (
+              <span key={tick} className="h-full border-l border-dashed border-border" />
+            ))}
+          </div>
+          <div className="relative grid h-full" style={{ gridTemplateRows: `repeat(${namespaces.length}, minmax(0, 1fr))` }}>
+            {namespaces.map(({ name, episodes }) => (
+              <div
+                key={name}
+                className="grid grid-cols-[80px_minmax(0,1fr)] items-center"
+                title={`${name}: ${formatNumber(episodes)} total episodes`}
+              >
+                <span className="pr-2 text-right text-[10px] text-muted-foreground">{name}</span>
+                <span
+                  aria-hidden="true"
+                  className="h-4/5 rounded-r-sm bg-primary/80"
+                  style={{ width: `${episodes / maxEpisodes * 100}%` }}
+                />
+                <span className="sr-only">{formatNumber(episodes)} total episodes</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div aria-hidden="true" className="relative ml-20 h-[30px] text-[10px] text-muted-foreground">
+          {ticks.map((tick) => (
+            <span key={tick} className="absolute top-1 -translate-x-1/2" style={{ left: `${tick}%` }}>
+              {formatNumber(maxEpisodes * tick / 100)}
+            </span>
+          ))}
+        </div>
+      </figure>
     </div>
   )
 }
