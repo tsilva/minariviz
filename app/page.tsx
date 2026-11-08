@@ -1,6 +1,7 @@
 "use client"
 
 import * as Sentry from "@sentry/nextjs"
+import dynamic from "next/dynamic"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -8,12 +9,20 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { DatasetCard } from "@/components/dataset-card"
-import { DatasetDetail } from "@/components/dataset-detail"
 import { OverviewStats } from "@/components/overview-stats"
 import { NamespaceChart } from "@/components/charts/namespace-chart"
 import { MINARI_DATASETS, NAMESPACES } from "@/lib/minari-data"
 import type { MinariDataset } from "@/lib/minari-data"
 import { Search, X, SlidersHorizontal, ExternalLink, Github } from "lucide-react"
+
+const DatasetDetail = dynamic(
+  () => import("@/components/dataset-detail").then((module) => module.DatasetDetail),
+  {
+    loading: () => (
+      <p role="status" className="text-sm text-muted-foreground">Loading dataset details…</p>
+    ),
+  }
+)
 
 export default function MinariVisualizer() {
   const [search, setSearch] = useState("")
