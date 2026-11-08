@@ -50,7 +50,7 @@ function CardIcon({ name, className }: { name: keyof typeof cardIcons; className
 export function DatasetCard({ dataset, isSelected, onClick }: DatasetCardProps) {
   return (
     <Card
-      className={`relative group cursor-pointer p-4 transition-all duration-200 border ${
+      className={`relative group cursor-pointer p-4 transition-all duration-200 border lg:[content-visibility:auto] lg:[contain-intrinsic-block-size:auto_10.4rem] ${
         isSelected
           ? "border-primary/60 bg-primary/5 shadow-[0_0_20px_-5px] shadow-primary/20"
           : "border-border hover:border-primary/30 bg-card hover:bg-card/80"
