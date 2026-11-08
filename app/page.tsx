@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { DatasetCard } from "@/components/dataset-card"
+import { DatasetCard, DatasetCardIcons } from "@/components/dataset-card"
 import { OverviewStats } from "@/components/overview-stats"
 import { NamespaceChart } from "@/components/charts/namespace-chart"
 import { MINARI_DATASETS, NAMESPACES } from "@/lib/minari-data"
@@ -248,6 +248,7 @@ export default function MinariVisualizer() {
             </p>
 
             {/* Dataset List */}
+            <DatasetCardIcons />
             <div
               role="region"
               aria-label="Dataset results"

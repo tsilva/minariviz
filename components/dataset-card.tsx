@@ -21,6 +21,32 @@ const namespaceColors: Record<string, string> = {
   WebAgents: "bg-primary/15 text-primary border-primary/30",
 }
 
+const cardIcons = {
+  arrow: ArrowRight,
+  episodes: Layers,
+  steps: Database,
+}
+
+export function DatasetCardIcons() {
+  return (
+    <svg aria-hidden="true" focusable="false" className="absolute size-0 overflow-hidden">
+      {Object.entries(cardIcons).map(([name, Icon]) => (
+        <symbol key={name} id={`minari-card-icon-${name}`} viewBox="0 0 24 24">
+          <Icon />
+        </symbol>
+      ))}
+    </svg>
+  )
+}
+
+function CardIcon({ name, className }: { name: keyof typeof cardIcons; className: string }) {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" className={className}>
+      <use href={`#minari-card-icon-${name}`} />
+    </svg>
+  )
+}
+
 export function DatasetCard({ dataset, isSelected, onClick }: DatasetCardProps) {
   return (
     <Card
@@ -61,17 +87,17 @@ export function DatasetCard({ dataset, isSelected, onClick }: DatasetCardProps) 
             {dataset.datasetName}
           </p>
         </div>
-        <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 mt-1" />
+        <CardIcon name="arrow" className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 mt-1" />
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Layers className="w-3 h-3 text-primary/70" />
+          <CardIcon name="episodes" className="w-3 h-3 text-primary/70" />
           <span className="font-mono">{formatNumber(dataset.totalEpisodes)}</span>
           <span>eps</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Database className="w-3 h-3 text-primary/70" />
+          <CardIcon name="steps" className="w-3 h-3 text-primary/70" />
           <span className="font-mono">{formatNumber(dataset.totalSteps)}</span>
           <span>steps</span>
         </div>
