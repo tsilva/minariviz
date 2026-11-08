@@ -10,7 +10,7 @@ const SITE_TITLE = "Minari Explorer | Offline RL Dataset Visualizer";
 const SITE_DESCRIPTION = "Browse and visualize Minari offline reinforcement learning datasets from the Farama Foundation. Explore metadata, episode statistics, reward distributions, and observations. Free tool for RL researchers and practitioners.";
 
 const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"], preload: false });
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 export const metadata: Metadata = {
