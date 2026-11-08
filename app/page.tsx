@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { DatasetCard } from "@/components/dataset-card"
 import { OverviewStats } from "@/components/overview-stats"
@@ -249,7 +248,12 @@ export default function MinariVisualizer() {
             </p>
 
             {/* Dataset List */}
-            <ScrollArea className="h-[calc(100vh-380px)] pr-3">
+            <div
+              role="region"
+              aria-label="Dataset results"
+              tabIndex={0}
+              className="h-[calc(100vh-380px)] overflow-y-auto overflow-x-hidden pr-px [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] focus-visible:outline-2 focus-visible:outline-ring"
+            >
               <div className="space-y-2 pb-4">
                 {filteredDatasets.map((dataset) => (
                   <DatasetCard
@@ -275,7 +279,7 @@ export default function MinariVisualizer() {
                   </div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </section>
 
           {/* Right Panel: Detail */}
