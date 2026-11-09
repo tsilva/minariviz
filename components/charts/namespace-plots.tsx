@@ -46,7 +46,7 @@ export function NamespacePlots({ data, colors }: NamespacePlotsProps) {
                   strokeDasharray={`${sweep} ${360 - sweep}`}
                   transform={`rotate(${start} 82 82)`}
                 >
-                  <title>{name}: {datasets} dataset{datasets === 1 ? "" : "s"}</title>
+                  <title>{`${name}: ${datasets} dataset${datasets === 1 ? "" : "s"}`}</title>
                 </circle>
               ))}
             </g>
