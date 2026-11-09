@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { MinariDataset } from "@/lib/minari-data"
 import { formatNumber } from "@/lib/minari-data"
+import { buildEpisodeStats } from "@/lib/episode-stats"
 import {
   Database,
   Layers,
@@ -26,7 +27,7 @@ import { CumulativeRewardsChart } from "./charts/cumulative-rewards"
 import { RewardSummaryChart } from "./charts/reward-summary"
 import { ObservationViewer } from "./observations/observation-viewer"
 import { supportsObservationRendering } from "@/lib/observation-utils"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 interface DatasetDetailProps {
   dataset: MinariDataset
@@ -65,6 +66,7 @@ function StatCard({
 
 export function DatasetDetail({ dataset }: DatasetDetailProps) {
   const [copied, setCopied] = useState(false)
+  const episodeStats = useMemo(() => buildEpisodeStats(dataset.episodeSummary, dataset.totalEpisodes), [dataset])
 
   const installCmd = `import minari\ndataset = minari.load_dataset("${dataset.id}", download=True)`
 
@@ -152,7 +154,7 @@ export function DatasetDetail({ dataset }: DatasetDetailProps) {
           label="Episodes"
           value={formatNumber(dataset.totalEpisodes)}
           icon={Layers}
-          sub={`Avg ${dataset.episodeStats.avgEpisodeLength} steps/ep`}
+          sub={`Avg ${episodeStats.avgEpisodeLength} steps/ep`}
         />
         <StatCard
           label="Total Steps"
@@ -262,16 +264,16 @@ export function DatasetDetail({ dataset }: DatasetDetailProps) {
           )}
         </TabsList>
         <TabsContent value="rewards" className="mt-4">
-          <RewardDistributionChart data={dataset.episodeStats.rewardDistribution} />
+          <RewardDistributionChart data={episodeStats.rewardDistribution} />
         </TabsContent>
         <TabsContent value="lengths" className="mt-4">
-          <EpisodeLengthChart data={dataset.episodeStats.episodeLengthDistribution} />
+          <EpisodeLengthChart data={episodeStats.episodeLengthDistribution} />
         </TabsContent>
         <TabsContent value="cumulative" className="mt-4">
-          <CumulativeRewardsChart data={dataset.episodeStats.cumulativeRewards} />
+          <CumulativeRewardsChart data={episodeStats.cumulativeRewards} />
         </TabsContent>
         <TabsContent value="summary" className="mt-4">
-          <RewardSummaryChart stats={dataset.episodeStats} />
+          <RewardSummaryChart stats={episodeStats} />
         </TabsContent>
         {supportsObservationRendering(dataset) && (
           <TabsContent value="observations" className="mt-4">
