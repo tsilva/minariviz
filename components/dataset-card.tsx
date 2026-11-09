@@ -21,11 +21,36 @@ const namespaceColors: Record<string, string> = {
   WebAgents: "bg-primary/15 text-primary border-primary/30",
 }
 
+const cardIcons = {
+  arrow: ArrowRight,
+  episodes: Layers,
+  steps: Database,
+}
+
+export function DatasetCardIcons() {
+  return (
+    <svg aria-hidden="true" focusable="false" className="absolute size-0 overflow-hidden">
+      {Object.entries(cardIcons).map(([name, Icon]) => (
+        <symbol key={name} id={`minari-card-icon-${name}`} viewBox="0 0 24 24">
+          <Icon />
+        </symbol>
+      ))}
+    </svg>
+  )
+}
+
+function CardIcon({ name, className }: { name: keyof typeof cardIcons; className: string }) {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" className={className}>
+      <use href={`#minari-card-icon-${name}`} />
+    </svg>
+  )
+}
+
 export function DatasetCard({ dataset, isSelected, onClick }: DatasetCardProps) {
   return (
     <Card
-      onClick={onClick}
-      className={`group cursor-pointer p-4 transition-all duration-200 border ${
+      className={`relative group cursor-pointer p-4 transition-all duration-200 border lg:[content-visibility:auto] lg:[contain-intrinsic-block-size:auto_10.4rem] ${
         isSelected
           ? "border-primary/60 bg-primary/5 shadow-[0_0_20px_-5px] shadow-primary/20"
           : "border-border hover:border-primary/30 bg-card hover:bg-card/80"
@@ -47,29 +72,38 @@ export function DatasetCard({ dataset, isSelected, onClick }: DatasetCardProps) 
             </span>
           </div>
           <h3 className="font-semibold text-foreground text-sm leading-tight truncate">
-            {dataset.envName}
+            <button
+              type="button"
+              aria-current={isSelected || undefined}
+              aria-controls="dataset-inspector"
+              aria-label={`${dataset.envName}, ${dataset.datasetName}, ${dataset.namespace} v${dataset.version}`}
+              className="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring"
+              onClick={onClick}
+            >
+              {dataset.envName}
+            </button>
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5 font-medium">
             {dataset.datasetName}
           </p>
         </div>
-        <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 mt-1" />
+        <CardIcon name="arrow" className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 mt-1" />
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Layers className="w-3 h-3 text-primary/70" />
+          <CardIcon name="episodes" className="w-3 h-3 text-primary/70" />
           <span className="font-mono">{formatNumber(dataset.totalEpisodes)}</span>
-          <span className="text-muted-foreground/60">eps</span>
+          <span>eps</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Database className="w-3 h-3 text-primary/70" />
+          <CardIcon name="steps" className="w-3 h-3 text-primary/70" />
           <span className="font-mono">{formatNumber(dataset.totalSteps)}</span>
-          <span className="text-muted-foreground/60">steps</span>
+          <span>steps</span>
         </div>
       </div>
 
-      <div className="mt-2.5 flex items-center gap-1 text-[10px] text-muted-foreground/60">
+      <div className="mt-2.5 flex items-center gap-1 text-[10px] text-muted-foreground">
         <span className="font-mono">
           {dataset.actionSpaceType}({dataset.actionSpaceDims})
         </span>

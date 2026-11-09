@@ -1,5 +1,14 @@
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
 @import 'tw-animate-css';
+
+/* Register a UI primitive here when the app starts using it. */
+@source "../app";
+@source "../components/*.tsx";
+@source "../components/charts";
+@source "../components/observations";
+@source "../components/ui/{badge,button,card,input,scroll-area,select,separator,slider,tabs}.tsx";
+@source "../hooks";
+@source "../lib";
 
 @custom-variant dark (&:is(.dark *));
 

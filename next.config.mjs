@@ -45,11 +45,16 @@ const nextConfig = {
   },
 }
 
+const isHostedBuild = process.env.VERCEL === "1" && Boolean(process.env.VERCEL_DEPLOYMENT_ID)
+
 const sentryWebpackPluginOptions = {
   org: process.env.SENTRY_ORG ?? "tsilva",
   project: process.env.SENTRY_PROJECT ?? "minariviz",
   silent: !process.env.CI,
-  ...(process.env.SENTRY_AUTH_TOKEN
+  useRunAfterProductionCompileHook: isHostedBuild ? undefined : false,
+  webpack: { disableSentryConfig: !isHostedBuild },
+  sourcemaps: { disable: !isHostedBuild || !process.env.SENTRY_AUTH_TOKEN },
+  ...(isHostedBuild && process.env.SENTRY_AUTH_TOKEN
     ? {
         authToken: process.env.SENTRY_AUTH_TOKEN,
         widenClientFileUpload: true,
