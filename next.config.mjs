@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url"
-import { withSentryConfig } from "@sentry/nextjs"
+import { withSentryConfig } from "@sentry/nextjs/config"
 
 const projectRoot = fileURLToPath(new URL(".", import.meta.url))
 

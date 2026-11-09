@@ -6,5 +6,18 @@ export const sentryServerDsn =
 
 export const sentryCommonConfig = {
   environment: sentryEnvironment,
+  dataCollection: {
+    userInfo: false,
+    cookies: false,
+    httpHeaders: false,
+    httpBodies: [],
+    urlQueryParams: false,
+    graphQL: { document: false, variables: false },
+    genAI: { inputs: false, outputs: false },
+    mcp: { inputs: false, outputs: false },
+    databaseQueryData: false,
+    queues: false,
+    frameContextLines: 7,
+  },
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1 : 0.1,
 }
