@@ -10,8 +10,8 @@ import { registerGlobCancellationTests } from "./dependency-glob-cancellation.mj
 
 const require = createRequire(resolve("package.json"));
 const sentryRequire = createRequire(require.resolve("@sentry/nextjs/package.json"));
-const { globFiles, createSentryBuildPluginManager } = sentryRequire("@sentry/bundler-plugin-core");
-const coreRequire = createRequire(sentryRequire.resolve("@sentry/bundler-plugin-core"));
+const { globFiles, createSentryBuildPluginManager } = sentryRequire("@sentry/bundler-plugins/core");
+const coreRequire = createRequire(sentryRequire.resolve("@sentry/bundler-plugins/core"));
 registerLegacyRuleRegressions(require);
 registerReactRuleRegressions(require);
 registerGlobCancellationTests(coreRequire("glob"));
@@ -131,7 +131,7 @@ test("TypeScript ESLint's actual named minimatch dependency preserves default-pr
 });
 
 test("Sentry's entire matcher graph resolves the exact approved fixed versions", () => {
-  const coreRequire = createRequire(sentryRequire.resolve("@sentry/bundler-plugin-core"));
+  const coreRequire = createRequire(sentryRequire.resolve("@sentry/bundler-plugins/core"));
   const globRequire = createRequire(coreRequire.resolve("glob"));
   const matcherRequire = createRequire(globRequire.resolve("minimatch"));
   assert.equal(coreRequire("glob/package.json").version, "14.0.2");
