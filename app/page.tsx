@@ -12,7 +12,7 @@ import { OverviewStats } from "@/components/overview-stats"
 import { NamespaceChart } from "@/components/charts/namespace-chart"
 import { MINARI_DATASETS, NAMESPACES } from "@/lib/minari-data"
 import type { MinariDataset } from "@/lib/minari-data"
-import { Search, X, SlidersHorizontal, ExternalLink, Github } from "lucide-react"
+import { Search, X, SlidersHorizontal, ExternalLink, GitFork } from "lucide-react"
 
 const DatasetDetail = dynamic(
   () => import("@/components/dataset-detail").then((module) => module.DatasetDetail),
@@ -130,7 +130,7 @@ export default function MinariVisualizer() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Github className="w-3 h-3 mr-1.5" />
+                <GitFork className="w-3 h-3 mr-1.5" />
                 GitHub
               </a>
             </Button>

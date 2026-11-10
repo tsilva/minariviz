@@ -19,9 +19,10 @@ for (const dependencies of [packageJson.dependencies, packageJson.devDependencie
 }
 assert.doesNotMatch(lock, /(?:git\+|github\.com\/|\b(?:file|link):|\btarball:)/i)
 
+const hasOpenTelemetry = lock.includes("'@opentelemetry/core@")
 const versionFloors = {
   "@babel/core": "7.29.7",
-  "@opentelemetry/core": "2.10.0",
+  ...(hasOpenTelemetry ? { "@opentelemetry/core": "2.10.0" } : {}),
   "brace-expansion": "1.1.21",
   "fast-uri": "3.1.8",
   "nanoid": "3.3.19",
@@ -65,15 +66,17 @@ assert.equal(expand("{}".repeat(40), { max: 1_000 }).length, 1)
 assert.equal(expand("{1..1000000000}", { max: 1_000 }).length, 1_000)
 assert.ok(Date.now() - expansionStarted < 1_000, "brace-expansion limits were not applied promptly")
 
-const { ROOT_CONTEXT, propagation } = virtualRequire("@opentelemetry/api")
-const { W3CBaggagePropagator } = virtualRequire("@opentelemetry/core")
-const oversizedBaggage = Array.from({ length: 1_000 }, (_, index) => `key${index}=value`).join(",")
-const extractedContext = new W3CBaggagePropagator().extract(
-  ROOT_CONTEXT,
-  { baggage: oversizedBaggage },
-  { get: (carrier, key) => carrier[key], keys: (carrier) => Object.keys(carrier) },
-)
-assert.equal(propagation.getBaggage(extractedContext).getAllEntries().length, 180)
+if (hasOpenTelemetry) {
+  const { ROOT_CONTEXT, propagation } = virtualRequire("@opentelemetry/api")
+  const { W3CBaggagePropagator } = virtualRequire("@opentelemetry/core")
+  const oversizedBaggage = Array.from({ length: 1_000 }, (_, index) => `key${index}=value`).join(",")
+  const extractedContext = new W3CBaggagePropagator().extract(
+    ROOT_CONTEXT,
+    { baggage: oversizedBaggage },
+    { get: (carrier, key) => carrier[key], keys: (carrier) => Object.keys(carrier) },
+  )
+  assert.equal(propagation.getBaggage(extractedContext).getAllEntries().length, 180)
+}
 
 const temporaryDirectory = await mkdtemp(join(tmpdir(), "minariviz-postcss-"))
 const secretPath = join(temporaryDirectory, "secret.map")

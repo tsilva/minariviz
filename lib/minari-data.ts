@@ -15,83 +15,38 @@ export interface MinariDataset {
   minariVersion: string
   description: string
   tags: string[]
-  episodeStats: EpisodeStats
+  episodeSummary: EpisodeSummary
   downloads: number
   createdAt: string
 }
 
-export interface EpisodeStats {
+export interface EpisodeSummary {
   rewardsMean: number
   rewardsStd: number
   rewardsMin: number
   rewardsMax: number
   avgEpisodeLength: number
+}
+
+export interface EpisodeStats extends EpisodeSummary {
   rewardDistribution: { bin: string; count: number }[]
   episodeLengthDistribution: { bin: string; count: number }[]
   cumulativeRewards: { episode: number; reward: number }[]
 }
 
-// Illustrative catalog data, not measurements from downloaded episodes.
-// Keep generated examples deterministic across server and browser rendering.
-function generateRewardDistribution(mean: number, std: number, min: number, max: number): { bin: string; count: number }[] {
-  const bins = 12
-  const range = max - min
-  const binWidth = range / bins
-  return Array.from({ length: bins }, (_, i) => {
-    const binStart = min + i * binWidth
-    const binCenter = binStart + binWidth / 2
-    const z = (binCenter - mean) / (std || 1)
-    const density = Math.exp(-0.5 * z * z)
-    return {
-      bin: binStart.toFixed(1),
-      count: Math.max(1, Math.round(density * 100)),
-    }
-  })
-}
-
-function generateEpisodeLengthDistribution(avgLen: number): { bin: string; count: number }[] {
-  const bins = 10
-  const minLen = Math.max(1, Math.round(avgLen * 0.2))
-  const maxLen = Math.round(avgLen * 2.2)
-  const binWidth = (maxLen - minLen) / bins
-  return Array.from({ length: bins }, (_, i) => {
-    const binStart = minLen + i * binWidth
-    const binCenter = binStart + binWidth / 2
-    const z = (binCenter - avgLen) / (avgLen * 0.35)
-    const density = Math.exp(-0.5 * z * z)
-    return {
-      bin: Math.round(binStart).toString(),
-      count: Math.max(1, Math.round(density * 80)),
-    }
-  })
-}
-
-function generateCumulativeRewards(numEpisodes: number, mean: number, std: number): { episode: number; reward: number }[] {
-  const sampleSize = Math.min(numEpisodes, 50)
-  const step = Math.max(1, Math.floor(numEpisodes / sampleSize))
-  return Array.from({ length: sampleSize }, (_, i) => ({
-    episode: i * step,
-    reward: parseFloat((mean + Math.sin(i * 1.7) * std).toFixed(2)),
-  }))
-}
-
-function makeStats(
+function makeSummary(
   mean: number,
   std: number,
   min: number,
   max: number,
-  avgLen: number,
-  episodes: number
-): EpisodeStats {
+  avgLen: number
+): EpisodeSummary {
   return {
     rewardsMean: mean,
     rewardsStd: std,
     rewardsMin: min,
     rewardsMax: max,
     avgEpisodeLength: avgLen,
-    rewardDistribution: generateRewardDistribution(mean, std, min, max),
-    episodeLengthDistribution: generateEpisodeLengthDistribution(avgLen),
-    cumulativeRewards: generateCumulativeRewards(episodes, mean, std),
   }
 }
 
@@ -114,7 +69,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Point maze navigation in a U-shaped maze using a waypoint controller policy.",
     tags: ["D4RL", "Maze", "Navigation", "Continuous"],
-    episodeStats: makeStats(82.4, 35.2, 0.0, 158.3, 241, 1267),
+    episodeSummary: makeSummary(82.4, 35.2, 0.0, 158.3, 241),
     downloads: 4895,
     createdAt: "2024-11-05",
   },
@@ -135,7 +90,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Point maze navigation in a medium-difficulty maze layout with complex paths.",
     tags: ["D4RL", "Maze", "Navigation", "Continuous"],
-    episodeStats: makeStats(64.1, 42.8, -12.0, 192.5, 499, 2004),
+    episodeSummary: makeSummary(64.1, 42.8, -12.0, 192.5, 499),
     downloads: 3210,
     createdAt: "2024-11-05",
   },
@@ -156,7 +111,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Point maze navigation in a large maze with lengthy trajectories and sparse rewards.",
     tags: ["D4RL", "Maze", "Navigation", "Continuous"],
-    episodeStats: makeStats(48.7, 55.1, -25.0, 280.0, 975, 4097),
+    episodeSummary: makeSummary(48.7, 55.1, -25.0, 280.0, 975),
     downloads: 2780,
     createdAt: "2024-11-05",
   },
@@ -177,7 +132,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Point maze in an open environment with minimal obstacles.",
     tags: ["D4RL", "Maze", "Navigation", "Continuous"],
-    episodeStats: makeStats(95.3, 22.1, 15.0, 132.0, 209, 1187),
+    episodeSummary: makeSummary(95.3, 22.1, 15.0, 132.0, 209),
     downloads: 1950,
     createdAt: "2024-11-05",
   },
@@ -199,7 +154,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Ant robot navigating a U-shaped maze. High-dimensional continuous control with 8 joint actuators.",
     tags: ["D4RL", "Maze", "MuJoCo", "Locomotion"],
-    episodeStats: makeStats(0.62, 0.38, 0.0, 1.0, 667, 1499),
+    episodeSummary: makeSummary(0.62, 0.38, 0.0, 1.0, 667),
     downloads: 4120,
     createdAt: "2024-11-05",
   },
@@ -220,7 +175,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Ant robot exploring diverse paths in a medium maze for play-style data collection.",
     tags: ["D4RL", "Maze", "MuJoCo", "Locomotion"],
-    episodeStats: makeStats(0.41, 0.42, 0.0, 1.0, 667, 2998),
+    episodeSummary: makeSummary(0.41, 0.42, 0.0, 1.0, 667),
     downloads: 3540,
     createdAt: "2024-11-05",
   },
@@ -241,7 +196,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Ant robot in a large maze with highly diverse trajectories and challenging navigation.",
     tags: ["D4RL", "Maze", "MuJoCo", "Locomotion"],
-    episodeStats: makeStats(0.28, 0.39, 0.0, 1.0, 1000, 3998),
+    episodeSummary: makeSummary(0.28, 0.39, 0.0, 1.0, 1000),
     downloads: 2890,
     createdAt: "2024-11-05",
   },
@@ -263,7 +218,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Robotic hand opening a door, collected via human teleoperation demonstrations.",
     tags: ["D4RL", "Adroit", "Dexterous", "Human"],
-    episodeStats: makeStats(12.8, 18.5, -6.2, 82.4, 49, 6729),
+    episodeSummary: makeSummary(12.8, 18.5, -6.2, 82.4, 49),
     downloads: 3150,
     createdAt: "2024-11-05",
   },
@@ -284,7 +239,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Robotic hand opening a door, collected from a behavioral cloning policy trained on human data.",
     tags: ["D4RL", "Adroit", "Dexterous", "Cloned"],
-    episodeStats: makeStats(8.2, 15.3, -8.1, 75.2, 60, 8192),
+    episodeSummary: makeSummary(8.2, 15.3, -8.1, 75.2, 60),
     downloads: 2440,
     createdAt: "2024-11-05",
   },
@@ -305,7 +260,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Robotic hand opening a door, collected from an RL-trained expert policy.",
     tags: ["D4RL", "Adroit", "Dexterous", "Expert"],
-    episodeStats: makeStats(52.1, 12.4, 18.0, 85.6, 50, 5000),
+    episodeSummary: makeSummary(52.1, 12.4, 18.0, 85.6, 50),
     downloads: 3680,
     createdAt: "2024-11-05",
   },
@@ -327,7 +282,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Dexterous pen manipulation using a Shadow Hand, collected via human teleoperation.",
     tags: ["D4RL", "Adroit", "Dexterous", "Human"],
-    episodeStats: makeStats(42.5, 28.3, -10.0, 120.0, 100, 5000),
+    episodeSummary: makeSummary(42.5, 28.3, -10.0, 120.0, 100),
     downloads: 2750,
     createdAt: "2024-11-05",
   },
@@ -348,7 +303,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Dexterous pen manipulation using a Shadow Hand, expert RL policy demonstrations.",
     tags: ["D4RL", "Adroit", "Dexterous", "Expert"],
-    episodeStats: makeStats(98.4, 15.2, 30.0, 140.0, 100, 5000),
+    episodeSummary: makeSummary(98.4, 15.2, 30.0, 140.0, 100),
     downloads: 3190,
     createdAt: "2024-11-05",
   },
@@ -370,7 +325,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Robotic hand using a hammer to drive a nail, teleoperated by humans.",
     tags: ["D4RL", "Adroit", "Dexterous", "Human"],
-    episodeStats: makeStats(1.2, 2.8, -3.0, 15.4, 200, 3214),
+    episodeSummary: makeSummary(1.2, 2.8, -3.0, 15.4, 200),
     downloads: 1890,
     createdAt: "2024-11-05",
   },
@@ -391,7 +346,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Robotic hand using a hammer to drive a nail, collected from expert RL policy.",
     tags: ["D4RL", "Adroit", "Dexterous", "Expert"],
-    episodeStats: makeStats(78.6, 22.1, 5.0, 125.0, 200, 5000),
+    episodeSummary: makeSummary(78.6, 22.1, 5.0, 125.0, 200),
     downloads: 2340,
     createdAt: "2024-11-05",
   },
@@ -413,7 +368,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Object relocation using a dexterous robotic hand, collected from human demonstrations.",
     tags: ["D4RL", "Adroit", "Dexterous", "Human"],
-    episodeStats: makeStats(-2.5, 4.1, -15.0, 8.2, 200, 3467),
+    episodeSummary: makeSummary(-2.5, 4.1, -15.0, 8.2, 200),
     downloads: 1650,
     createdAt: "2024-11-05",
   },
@@ -435,7 +390,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Kitchen manipulation environment with a 9-DOF Franka robot completing all subtasks.",
     tags: ["D4RL", "Kitchen", "Manipulation", "Multi-task"],
-    episodeStats: makeStats(3.2, 1.1, 0.0, 4.0, 291, 3680),
+    episodeSummary: makeSummary(3.2, 1.1, 0.0, 4.0, 291),
     downloads: 3020,
     createdAt: "2024-11-05",
   },
@@ -456,7 +411,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "Kitchen manipulation with partial task completion demonstrations.",
     tags: ["D4RL", "Kitchen", "Manipulation", "Multi-task"],
-    episodeStats: makeStats(1.8, 1.0, 0.0, 4.0, 291, 3680),
+    episodeSummary: makeSummary(1.8, 1.0, 0.0, 4.0, 291),
     downloads: 2560,
     createdAt: "2024-11-05",
   },
@@ -478,7 +433,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "MiniGrid FourRooms environment with optimal BFS-generated trajectories.",
     tags: ["MiniGrid", "Grid", "Navigation", "Discrete"],
-    episodeStats: makeStats(0.92, 0.12, 0.0, 1.0, 38, 10000),
+    episodeSummary: makeSummary(0.92, 0.12, 0.0, 1.0, 38),
     downloads: 4052,
     createdAt: "2024-11-19",
   },
@@ -499,7 +454,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "BabyAI Pickup task: pick up an object of a specified type and color.",
     tags: ["MiniGrid", "BabyAI", "Instruction", "Discrete"],
-    episodeStats: makeStats(0.95, 0.08, 0.0, 1.0, 9, 50000),
+    episodeSummary: makeSummary(0.95, 0.08, 0.0, 1.0, 9),
     downloads: 1820,
     createdAt: "2024-11-19",
   },
@@ -520,7 +475,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "BabyAI GoToObj: Navigate to an object in a single room.",
     tags: ["MiniGrid", "BabyAI", "Instruction", "Discrete"],
-    episodeStats: makeStats(0.97, 0.05, 0.0, 1.0, 6, 50000),
+    episodeSummary: makeSummary(0.97, 0.05, 0.0, 1.0, 6),
     downloads: 1540,
     createdAt: "2024-11-19",
   },
@@ -541,7 +496,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.4.3",
     description: "BabyAI BossLevel: The most challenging BabyAI task combining all skills.",
     tags: ["MiniGrid", "BabyAI", "Instruction", "Discrete"],
-    episodeStats: makeStats(0.68, 0.35, 0.0, 1.0, 90, 50000),
+    episodeSummary: makeSummary(0.68, 0.35, 0.0, 1.0, 90),
     downloads: 2100,
     createdAt: "2024-11-19",
   },
@@ -563,7 +518,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.3",
     description: "Atari Breakout played by a CleanRL PPO-trained expert agent.",
     tags: ["Atari", "Arcade", "Expert", "Discrete"],
-    episodeStats: makeStats(312.5, 89.2, 42.0, 520.0, 4583, 100),
+    episodeSummary: makeSummary(312.5, 89.2, 42.0, 520.0, 4583),
     downloads: 3976,
     createdAt: "2025-03-22",
   },
@@ -584,7 +539,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.3",
     description: "Atari Pong played by a CleanRL PPO-trained expert agent.",
     tags: ["Atari", "Arcade", "Expert", "Discrete"],
-    episodeStats: makeStats(19.8, 1.5, 14.0, 21.0, 1250, 100),
+    episodeSummary: makeSummary(19.8, 1.5, 14.0, 21.0, 1250),
     downloads: 2840,
     createdAt: "2025-03-22",
   },
@@ -605,7 +560,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.3",
     description: "Atari Space Invaders played by expert PPO policy from CleanRL.",
     tags: ["Atari", "Arcade", "Expert", "Discrete"],
-    episodeStats: makeStats(1285.0, 420.0, 280.0, 2450.0, 2105, 100),
+    episodeSummary: makeSummary(1285.0, 420.0, 280.0, 2450.0, 2105),
     downloads: 2210,
     createdAt: "2025-03-22",
   },
@@ -626,7 +581,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.3",
     description: "Atari Seaquest played by expert PPO policy.",
     tags: ["Atari", "Arcade", "Expert", "Discrete"],
-    episodeStats: makeStats(2450.0, 850.0, 400.0, 5200.0, 3800, 100),
+    episodeSummary: makeSummary(2450.0, 850.0, 400.0, 5200.0, 3800),
     downloads: 1680,
     createdAt: "2025-03-22",
   },
@@ -647,7 +602,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.3",
     description: "Atari Montezuma's Revenge - notoriously hard exploration game with sparse rewards.",
     tags: ["Atari", "Arcade", "Expert", "Discrete", "Sparse"],
-    episodeStats: makeStats(2100.0, 1800.0, 0.0, 8500.0, 5200, 100),
+    episodeSummary: makeSummary(2100.0, 1800.0, 0.0, 8500.0, 5200),
     downloads: 1950,
     createdAt: "2025-03-22",
   },
@@ -669,7 +624,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.0",
     description: "HalfCheetah locomotion from a SAC-trained expert policy.",
     tags: ["MuJoCo", "Locomotion", "Expert", "Continuous"],
-    episodeStats: makeStats(11200.0, 1500.0, 5400.0, 14800.0, 1000, 1000),
+    episodeSummary: makeSummary(11200.0, 1500.0, 5400.0, 14800.0, 1000),
     downloads: 4641,
     createdAt: "2024-11-06",
   },
@@ -690,7 +645,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.0",
     description: "Hopper single-leg locomotion from a SAC-trained expert.",
     tags: ["MuJoCo", "Locomotion", "Expert", "Continuous"],
-    episodeStats: makeStats(3420.0, 280.0, 1800.0, 3780.0, 1000, 1000),
+    episodeSummary: makeSummary(3420.0, 280.0, 1800.0, 3780.0, 1000),
     downloads: 3890,
     createdAt: "2024-11-06",
   },
@@ -711,7 +666,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.0",
     description: "Walker2d bipedal locomotion from an SAC-trained expert policy.",
     tags: ["MuJoCo", "Locomotion", "Expert", "Continuous"],
-    episodeStats: makeStats(4850.0, 420.0, 2200.0, 5500.0, 1000, 1000),
+    episodeSummary: makeSummary(4850.0, 420.0, 2200.0, 5500.0, 1000),
     downloads: 3240,
     createdAt: "2024-11-06",
   },
@@ -732,7 +687,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.0",
     description: "Ant quadruped locomotion from a SAC-trained expert policy.",
     tags: ["MuJoCo", "Locomotion", "Expert", "Continuous"],
-    episodeStats: makeStats(5820.0, 680.0, 2800.0, 7200.0, 1000, 1000),
+    episodeSummary: makeSummary(5820.0, 680.0, 2800.0, 7200.0, 1000),
     downloads: 2960,
     createdAt: "2024-11-06",
   },
@@ -754,7 +709,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.3",
     description: "MetaWorld button pressing task with a Sawyer robot arm.",
     tags: ["MetaWorld", "Manipulation", "Expert", "Continuous"],
-    episodeStats: makeStats(4200.0, 350.0, 2800.0, 4800.0, 150, 2500),
+    episodeSummary: makeSummary(4200.0, 350.0, 2800.0, 4800.0, 150),
     downloads: 3393,
     createdAt: "2025-05-07",
   },
@@ -775,7 +730,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.3",
     description: "MetaWorld drawer opening task with a Sawyer robot arm.",
     tags: ["MetaWorld", "Manipulation", "Expert", "Continuous"],
-    episodeStats: makeStats(3800.0, 420.0, 2100.0, 4600.0, 150, 2500),
+    episodeSummary: makeSummary(3800.0, 420.0, 2100.0, 4600.0, 150),
     downloads: 2180,
     createdAt: "2025-05-07",
   },
@@ -796,7 +751,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.3",
     description: "MetaWorld pick and place manipulation task with a Sawyer robot arm.",
     tags: ["MetaWorld", "Manipulation", "Expert", "Continuous"],
-    episodeStats: makeStats(3200.0, 580.0, 1500.0, 4400.0, 150, 2500),
+    episodeSummary: makeSummary(3200.0, 580.0, 1500.0, 4400.0, 150),
     downloads: 2540,
     createdAt: "2025-05-07",
   },
@@ -818,7 +773,7 @@ export const MINARI_DATASETS: MinariDataset[] = [
     minariVersion: "0.5.3",
     description: "WebArena web navigation tasks with human expert demonstrations.",
     tags: ["WebAgents", "Web", "NLP", "Multimodal"],
-    episodeStats: makeStats(0.42, 0.38, 0.0, 1.0, 11, 812),
+    episodeSummary: makeSummary(0.42, 0.38, 0.0, 1.0, 11),
     downloads: 2077,
     createdAt: "2025-05-15",
   },

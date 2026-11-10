@@ -37,9 +37,9 @@ farama-notifications==0.0.6 \
     --hash=sha256:b19acac4bb41d76e59e03394b5dd165f4761c86fa327f56307a35cbee3b60158 \
     --hash=sha256:f84839188efa1ce5bb361c2a84881b2dc2c0d0d7fb661ff00421820170930935
     # via gymnasium
-fastapi==0.141.1 \
-    --hash=sha256:bfb91aa2d334c61cb35ba9a116fc123b3d3df31640b801cf57a7a78ec3f603b3 \
-    --hash=sha256:e8822fc40db1e1858054d7a949a888695bc9bdce70139178e33bd2871a453ca1
+fastapi==0.162.0 \
+    --hash=sha256:3785963de305dd09912426cb81f2d230fce98ab3521cdfe97265c8d14983128c \
+    --hash=sha256:6a22c1e2e6e32e0633ee7e170f00009a29b8228b16feb219ee42f32fd8d88a8f
     # via -r api/requirements.txt
 filelock==4.2.1 \
     --hash=sha256:7be2662e9e826b9bba28afc0f843a123280d799a2ea44bb5d35ccec67905ae44 \
@@ -156,9 +156,9 @@ mdurl==0.1.2 \
     --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8 \
     --hash=sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
     # via markdown-it-py
-minari==0.5.3 \
-    --hash=sha256:8b749b06390ce6d5814b6d23dd24a5a44fa142f65f807bf6a249572d5380cc4b \
-    --hash=sha256:fc9587ddc3e7b1877185ace33f530b355cd1ec7e072f8df833654cb48d2435c4
+minari==0.5.4 \
+    --hash=sha256:a32a7c7a93b6986ceac3552c32cecd94e37367cdb533a81647ca9e76b5b42116 \
+    --hash=sha256:c396ca5d141a519aaa60d15e5f7f73487d6084e5bb00acd08b63a01f65eefd69
     # via -r api/requirements.txt
 numpy==2.4.6 \
     --hash=sha256:001fbb8e08d942dd57599e781f2472269ee7f2755fae407b4f67b2f0b17da3f1 \
@@ -238,6 +238,10 @@ numpy==2.4.6 \
     #   gymnasium
     #   h5py
     #   minari
+opentelemetry-api==1.45.2 \
+    --hash=sha256:2cbd737377e710ee740d261c94e93fa0f08e6d037c18f17513cc0a2d94479a34 \
+    --hash=sha256:d7b0008e21e5fd61cbe7a7f34ca3b6905a78ab677d9bc395e299359c75cda6b4
+    # via fastapi
 packaging==26.3 \
     --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79 \
     --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
@@ -565,6 +569,7 @@ typing-extensions==4.16.0 \
     #   gymnasium
     #   huggingface-hub
     #   minari
+    #   opentelemetry-api
     #   pydantic
     #   pydantic-core
     #   starlette
@@ -575,7 +580,7 @@ typing-inspection==0.4.2 \
     # via
     #   fastapi
     #   pydantic
-uvicorn==0.52.1 \
-    --hash=sha256:112ec661814189acbccd3f7b86460147cc065fc92c0821afa78918780e4354dd \
-    --hash=sha256:e4403f9d93188cf9d1088e9f40e3acd12630e2df8675316704379a7fc20fff6a
+uvicorn==0.54.0 \
+    --hash=sha256:505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf \
+    --hash=sha256:a2e33cbfaa0306f8e6b0c13e0cb89d7d7a2da3e62b90c66e18c33d9807b28620
     # via -r api/requirements.txt
