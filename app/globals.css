@@ -1,5 +1,14 @@
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
 @import 'tw-animate-css';
+
+/* Register a UI primitive here when the app starts using it. */
+@source "../app";
+@source "../components/*.tsx";
+@source "../components/charts";
+@source "../components/observations";
+@source "../components/ui/{badge,button,card,input,scroll-area,select,separator,slider,tabs}.tsx";
+@source "../hooks";
+@source "../lib";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -40,8 +49,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: var(--font-catalog-sans), 'Geist', 'Geist Fallback';
+  --font-mono: var(--font-catalog-mono), 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
