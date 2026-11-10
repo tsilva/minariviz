@@ -2,8 +2,15 @@ minimumReleaseAge: 10080
 blockExoticSubdeps: true
 
 overrides:
+  "minimatch": "11.0.1"
+  "@isaacs/nonrecursive-glob-match": "1.0.1"
+  "glob": "14.0.2"
+  "path-scurry": "3.0.0"
+  "fast-uri@>=3.0.0 <3.1.9": "3.1.9"
+  "fast-uri": "3.1.9"
+  "zod@>=4 <4.6.6": "4.6.6"
+  "eslint-plugin-react-hooks>zod": "4.6.6"
   "sharp@<0.35.5": "0.35.5"
-  "fast-uri@>=3.0.0 <3.1.8": "3.1.8"
   "js-yaml@>=4.0.0 <4.3.2": "4.3.2"
   "brace-expansion@>=1.0.0 <1.1.21": "1.1.21"
   "brace-expansion@>=2.0.0 <2.1.7": "2.1.7"
@@ -12,4 +19,27 @@ overrides:
 
 # User-approved exception for this security patch only.
 minimumReleaseAgeExclude:
+  # November 2026 security release. Remove this exact group once normally eligible.
+  - '@next/env@16.4.5'
+  - '@next/eslint-plugin-next@16.4.5'
+  - '@next/swc-darwin-arm64@16.4.5'
+  - '@next/swc-darwin-x64@16.4.5'
+  - '@next/swc-linux-arm64-gnu@16.4.5'
+  - '@next/swc-linux-arm64-musl@16.4.5'
+  - '@next/swc-linux-x64-gnu@16.4.5'
+  - '@next/swc-linux-x64-musl@16.4.5'
+  - '@next/swc-win32-arm64-msvc@16.4.5'
+  - '@next/swc-win32-x64-msvc@16.4.5'
+  - 'eslint-config-next@16.4.5'
+  - 'next@16.4.5'
   - source-map-js@1.2.2
+  # Exact security patches approved for the October 2026 advisories.
+  - "minimatch@11.0.1"
+  - "@isaacs/nonrecursive-glob-match@1.0.1"
+  - "glob@14.0.2"
+  - "path-scurry@3.0.0"
+
+# Preserve the existing ESLint APIs while using the fixed matcher.
+patchedDependencies:
+  minimatch@11.0.1: patches/minimatch@11.0.1.patch
+  eslint-plugin-import@2.32.0: patches/eslint-plugin-import@2.32.0.patch

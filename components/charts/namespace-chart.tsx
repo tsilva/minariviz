@@ -1,20 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { NamespacePlots } from "./namespace-plots"
 import { MINARI_DATASETS, NAMESPACES, formatNumber } from "@/lib/minari-data"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from "recharts"
 
 const COLORS = [
   "oklch(0.72 0.15 195)",
@@ -26,12 +13,6 @@ const COLORS = [
 ]
 
 export function NamespaceChart() {
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
   const namespaceData = NAMESPACES.map((ns) => {
     const datasets = MINARI_DATASETS.filter((d) => d.namespace === ns)
     return {
@@ -42,11 +23,6 @@ export function NamespaceChart() {
       downloads: datasets.reduce((s, d) => s + d.downloads, 0),
     }
   })
-
-  const pieData = namespaceData.map((d) => ({
-    name: d.name,
-    value: d.datasets,
-  }))
 
   return (
     <div className="space-y-6">
@@ -59,109 +35,7 @@ export function NamespaceChart() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Pie */}
-        <div className="h-[250px] min-w-0">
-          {isMounted ? (
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={250}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={3}
-                  dataKey="value"
-                  stroke="oklch(0.098 0.005 260)"
-                  strokeWidth={2}
-                >
-                  {pieData.map((_, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                      fillOpacity={0.85}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "oklch(0.14 0.008 260)",
-                    border: "1px solid oklch(0.22 0.01 260)",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    color: "oklch(0.95 0 0)",
-                  }}
-                  formatter={(value) => [`${value ?? 0} datasets`, ""]}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: "11px" }}
-                  formatter={(value) => (
-                    <span style={{ color: "oklch(0.6 0.01 260)" }}>{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full rounded-lg border border-border/50 bg-secondary/20" />
-          )}
-        </div>
-
-        {/* Bar */}
-        <div className="h-[250px] min-w-0">
-          {isMounted ? (
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={250}>
-              <BarChart
-                data={namespaceData}
-                layout="vertical"
-                margin={{ top: 0, right: 10, bottom: 0, left: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="oklch(0.22 0.01 260)"
-                  horizontal={false}
-                />
-                <XAxis
-                  type="number"
-                  tick={{ fontSize: 10, fill: "oklch(0.6 0.01 260)" }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => formatNumber(v)}
-                />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  tick={{ fontSize: 10, fill: "oklch(0.6 0.01 260)" }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={80}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "oklch(0.14 0.008 260)",
-                    border: "1px solid oklch(0.22 0.01 260)",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    color: "oklch(0.95 0 0)",
-                  }}
-                  formatter={(value) => [
-                    formatNumber(typeof value === "number" ? value : 0),
-                    "Total Episodes",
-                  ]}
-                />
-                <Bar
-                  dataKey="episodes"
-                  fill="oklch(0.72 0.15 195)"
-                  radius={[0, 4, 4, 0]}
-                  fillOpacity={0.8}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full rounded-lg border border-border/50 bg-secondary/20" />
-          )}
-        </div>
-      </div>
+      <NamespacePlots data={namespaceData} colors={COLORS} />
 
       {/* Namespace summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
