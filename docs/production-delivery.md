@@ -15,3 +15,8 @@ Use **Actions → Production delivery → Run workflow → main** to recover aft
 Native Infisical syncs are disabled after this workflow has successfully replaced them. Updating a deployment credential in GitHub does not replace application keys in Infisical.
 
 Production delivery classifies public settings through the pinned `configNames` list; all other allowlisted values remain write-only Secrets. Vercel’s Require Separate Values policy stays enabled: real Production secrets must differ from non-production values. Existing variables are updated by their exact Production IDs. A legacy Secret explicitly listed as public configuration is replaced only in Production because Vercel cannot convert it to Config in place; Preview and Development rows are preserved. Provider responses and credential values are never logged. A failed sync holds deployment; rerun delivery after fixing the named key at its source.
+
+Production builds inline the catalog stylesheet so it arrives with the HTML.
+The same stylesheet is sent with each full HTML response. Verify the inline
+style and its font URLs with a production build because development serves
+styles separately.

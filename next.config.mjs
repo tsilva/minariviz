@@ -37,6 +37,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    inlineCss: true,
+  },
   images: {
     unoptimized: true,
   },
