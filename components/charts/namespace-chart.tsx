@@ -1,3 +1,5 @@
+"use client"
+
 import { NamespacePlots } from "./namespace-plots"
 import { MINARI_DATASETS, NAMESPACES, formatNumber } from "@/lib/minari-data"
 
