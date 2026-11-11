@@ -1,0 +1,303 @@
+"use client"
+
+import * as Sentry from "@sentry/nextjs"
+import dynamic from "next/dynamic"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { DatasetCard, DatasetCardIcons } from "@/components/dataset-card"
+import { MINARI_DATASETS, NAMESPACES } from "@/lib/minari-data"
+import type { MinariDataset } from "@/lib/minari-data"
+import { Search, X, SlidersHorizontal, ExternalLink, GitFork } from "lucide-react"
+
+const DatasetDetail = dynamic(
+  () => import("@/components/dataset-detail").then((module) => module.DatasetDetail),
+  {
+    loading: () => (
+      <p role="status" className="text-sm text-muted-foreground">Loading dataset details…</p>
+    ),
+  }
+)
+
+export function MinariVisualizer({ overview, namespaceChart }: {
+  overview: ReactNode
+  namespaceChart: ReactNode
+}) {
+  const [search, setSearch] = useState("")
+  const searchInput = useRef<HTMLInputElement>(null)
+  const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([])
+  const [selectedDataset, setSelectedDataset] = useState<MinariDataset | null>(null)
+  const [showFilters, setShowFilters] = useState(true)
+  const [smokeTestSent, setSmokeTestSent] = useState(false)
+
+  useEffect(() => {
+    const smokeTestId = new URLSearchParams(window.location.search).get(
+      "__sentry_smoke_test"
+    )
+
+    if (!smokeTestId || smokeTestSent) {
+      return
+    }
+
+    setSmokeTestSent(true)
+    Sentry.captureException(new Error(`Sentry smoke test: ${smokeTestId}`), {
+      tags: {
+        smoke_test: "true",
+        smoke_test_surface: "app-page",
+      },
+      extra: {
+        smokeTestId,
+      },
+    })
+  }, [smokeTestSent])
+
+  const filteredDatasets = useMemo(() => {
+    return MINARI_DATASETS.filter((d) => {
+      const matchesSearch =
+        search === "" ||
+        d.id.toLowerCase().includes(search.toLowerCase()) ||
+        d.envName.toLowerCase().includes(search.toLowerCase()) ||
+        d.datasetName.toLowerCase().includes(search.toLowerCase()) ||
+        d.description.toLowerCase().includes(search.toLowerCase()) ||
+        d.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()))
+
+      const matchesNamespace =
+        selectedNamespaces.length === 0 ||
+        selectedNamespaces.includes(d.namespace)
+
+      return matchesSearch && matchesNamespace
+    })
+  }, [search, selectedNamespaces])
+
+  function toggleNamespace(ns: string) {
+    setSelectedNamespaces((prev) =>
+      prev.includes(ns) ? prev.filter((n) => n !== ns) : [...prev, ns]
+    )
+  }
+
+  function clearSearch() {
+    setSearch("")
+    searchInput.current?.focus()
+  }
+
+  function clearFilters() {
+    clearSearch()
+    setSelectedNamespaces([])
+  }
+
+  const hasFilters = search !== "" || selectedNamespaces.length > 0
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto max-w-[1600px] px-4 md:px-6 py-3 flex items-center justify-between">
+          <a href="https://minari.farama.org/index.html" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-md bg-primary/20 flex items-center justify-center">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-4 h-4 text-primary"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                  <path d="M2 12h20" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-sm font-bold tracking-tight text-foreground">
+                  Minari Explorer
+                </h1>
+                <p className="text-[10px] text-muted-foreground">
+                  Offline RL Dataset Visualizer
+                </p>
+              </div>
+            </div>
+          </a>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px] font-mono hidden sm:flex">
+              {MINARI_DATASETS.length} datasets
+            </Badge>
+            <Button variant="outline" size="sm" className="text-xs h-8" asChild>
+              <a
+                href="https://github.com/tsilva/minariviz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <GitFork className="w-3 h-3 mr-1.5" />
+                GitHub
+              </a>
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs h-8" asChild>
+              <a
+                href="https://minari.farama.org"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink className="w-3 h-3 mr-1.5" />
+                Docs
+              </a>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-[1600px] px-4 md:px-6 py-6">
+        <p className="mb-4 rounded-lg border border-border/50 bg-secondary/40 p-3 text-sm text-muted-foreground">
+          <strong className="text-foreground">Illustrative catalog.</strong>{" "}
+          Catalog numbers and charts are examples, not verified dataset measurements.
+          The observation viewer reads actual downloaded episodes.
+        </p>
+        {/* Overview Stats */}
+        {overview}
+
+        <div className="mt-6 flex flex-col lg:flex-row gap-6">
+          {/* Left Panel: Catalog */}
+          <section aria-labelledby="dataset-catalog-heading" className="w-full lg:w-[400px] xl:w-[440px] shrink-0 space-y-4">
+            <h2 id="dataset-catalog-heading" className="sr-only">Dataset catalog</h2>
+            {/* Search & Filters */}
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  ref={searchInput}
+                  aria-label="Search datasets, environments, and tags"
+                  placeholder="Search datasets, environments, tags..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 pr-9 h-9 bg-card border-border/50 text-sm"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    aria-label="Clear dataset search"
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7 text-muted-foreground"
+                  aria-expanded={showFilters}
+                  aria-controls="dataset-namespace-filters"
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <SlidersHorizontal className="w-3 h-3 mr-1.5" />
+                  Filters
+                </Button>
+                {hasFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-7 text-muted-foreground"
+                    onClick={clearFilters}
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+
+              <div
+                id="dataset-namespace-filters"
+                role="group"
+                aria-label="Filter by dataset namespace"
+                className={showFilters ? "flex flex-wrap gap-1.5" : "hidden"}
+              >
+                {NAMESPACES.map((ns) => (
+                  <Badge
+                    key={ns}
+                    asChild
+                    variant={selectedNamespaces.includes(ns) ? "default" : "outline"}
+                    className={`cursor-pointer text-[11px] transition-all ${
+                      selectedNamespaces.includes(ns)
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={selectedNamespaces.includes(ns)}
+                      onClick={() => toggleNamespace(ns)}
+                    >
+                      {ns}
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <Separator className="bg-border/30" />
+
+            {/* Results count */}
+            <p role="status" aria-atomic="true" className="text-xs text-muted-foreground">
+              {filteredDatasets.length} dataset{filteredDatasets.length !== 1 ? "s" : ""}
+              {hasFilters ? " matching filters" : ""}
+            </p>
+
+            {/* Dataset List */}
+            <DatasetCardIcons />
+            <div
+              role="region"
+              aria-label="Dataset results"
+              tabIndex={0}
+              className="h-[calc(100vh-380px)] overflow-y-auto overflow-x-hidden pr-px [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <div className="space-y-2 pb-4">
+                {filteredDatasets.map((dataset) => (
+                  <DatasetCard
+                    key={dataset.id}
+                    dataset={dataset}
+                    isSelected={selectedDataset?.id === dataset.id}
+                    onClick={() => setSelectedDataset(dataset)}
+                  />
+                ))}
+                {filteredDatasets.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-sm text-muted-foreground">
+                      No datasets match your filters
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 text-xs"
+                      onClick={clearFilters}
+                    >
+                      Clear all filters
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Right Panel: Detail */}
+          <section id="dataset-inspector" aria-label={selectedDataset ? "Dataset details" : "Dataset overview"} className="flex-1 min-w-0">
+            {selectedDataset ? (
+              <div className="rounded-xl border border-border/50 bg-card p-6">
+                <DatasetDetail dataset={selectedDataset} />
+              </div>
+            ) : (
+              <div className="rounded-xl border border-border/50 bg-card p-6">
+                {namespaceChart}
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
+    </div>
+  )
+}

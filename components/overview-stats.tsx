@@ -1,5 +1,3 @@
-"use client"
-
 import { MINARI_DATASETS, formatNumber } from "@/lib/minari-data"
 import { Database, Layers, FolderOpen, ArrowDownToLine } from "lucide-react"
 
