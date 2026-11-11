@@ -51,6 +51,7 @@ const sentryWebpackPluginOptions = {
   org: process.env.SENTRY_ORG ?? "tsilva",
   project: process.env.SENTRY_PROJECT ?? "minariviz",
   silent: !process.env.CI,
+  bundleSizeOptimizations: { excludeDebugStatements: true },
   useRunAfterProductionCompileHook: isHostedBuild ? undefined : false,
   webpack: { disableSentryConfig: !isHostedBuild },
   sourcemaps: { disable: !isHostedBuild || !process.env.SENTRY_AUTH_TOKEN },
