@@ -5,6 +5,9 @@ weights from 400 through 700. The regular Next.js Geist fonts provide extended
 character coverage. Keep the Latin font files in sync if the catalog starts
 using a weight outside that range.
 
+Both local fonts are preloaded because the catalog's first screen uses sans
+text and monospace counters. Extended-character fallback fonts are not preloaded.
+
 The local files derive from the Google Fonts Latin WOFF2 files served by
 MinariViz at `f41c3f7fab3f1ee8703feccefa481fa47f9764bd`. Both originals and the
 modified fonts use the [SIL Open Font License](../app/fonts/OFL.txt).
