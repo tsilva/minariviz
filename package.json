@@ -5,17 +5,13 @@
   "packageManager": "pnpm@10.27.0",
   "scripts": {
     "preinstall": "node -e \"const ua = process.env.npm_config_user_agent || ''; if (!ua.startsWith('pnpm/')) { console.error('Use pnpm for this repo.'); process.exit(1); }\"",
-    "dev": "python3 scripts/infisical/run.py dev",
+    "dev": "node scripts/dev-server.mjs next dev",
     "build": "next build",
     "start": "node scripts/dev-server.mjs next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit --pretty false",
     "test:deps": "node --test scripts/dependency-next-glob.test.mjs && node scripts/dependency-smoke.mjs",
-    "test:observations": "node scripts/test-observations.mjs",
-    "dev:app": "node scripts/dev-server.mjs next dev",
-    "start:secrets": "python3 scripts/infisical/run.py start",
-    "secrets:check": "python3 scripts/infisical/run.py check",
-    "test:secrets": "python3 -m unittest discover -s scripts/infisical -p test_secrets.py"
+    "test:observations": "node scripts/test-observations.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.1",

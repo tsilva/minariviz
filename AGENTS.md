@@ -12,7 +12,9 @@ README.md must be kept up to date with any significant project changes.
 
 ## Secrets
 
-Local development and builds skip Sentry source-map uploads. GitHub Actions production builds handle uploads. Production uses `minariviz-production` Production `/` with a protected Vercel sync. Never print secret values or upload local credential files; retain Keychain originals until verified rotation.
+Keep local Sentry source-map uploads disabled and preserve the existing hosted
+Production upload path. Trusted Production synchronization is separate from
+ordinary development; never use it as a local credential fallback.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
