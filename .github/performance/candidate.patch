@@ -1,0 +1,1584 @@
+--- a/README.md
++++ b/README.md
+@@ -47,12 +47,14 @@
+ 
+ ```bash
+ pnpm dev       # start the Next.js development server
+-pnpm build     # build the frontend for production
++pnpm build     # verify the catalogue and build the frontend for production
+ pnpm start     # start the production Next.js server
+ pnpm lint      # run ESLint
+ pnpm typecheck # run the standalone TypeScript gate
+ pnpm test:deps # exercise patched dependency security boundaries
+ pnpm test:observations # check observation API routing and cold-start handling
++pnpm catalog:generate # regenerate compact catalogue and detail metadata
++pnpm test:catalog # check catalogue values, search/filter parity and totals
+ ```
+ 
+ ```bash
+@@ -68,6 +70,7 @@
+ - The viewer allows up to a minute for the hosted API to wake up, opens the first episode automatically, and offers a retry if the connection fails. Loading a dataset for the first time may take longer while the API downloads it.
+ - The API downloads only the catalog's observation HDF5 files from `farama-minari` on Hugging Face, pins downloads to their verified revision, and stores them under `~/.minari/datasets`. Run `PYTHONPATH=api python -m unittest discover -s api` from the repository root to check download, request, and memory boundaries.
+ - The observation viewer requires the Python API server. The static catalog, filtering, and charts run in the frontend.
++- Use Node.js 24 or newer. Edit `lib/minari-data.ts` as the canonical catalogue, then run `pnpm catalog:generate`. The build rejects stale generated files and checks search/filter parity. Startup loads card/search fields and precomputed totals; remaining metadata loads with the dataset inspector.
+ - Optional analytics and monitoring keys are listed in `.env.example`: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_ENVIRONMENT`. Hosted Vercel builds use `SENTRY_AUTH_TOKEN` to upload source maps.
+ - Vercel builds the Next.js frontend. `render.yaml` defines a Docker-backed Render service for the FastAPI API, with `/api/health` configured as the Render health check path.
+ 
+--- a/package.json
++++ b/package.json
+@@ -6,12 +6,15 @@
+   "scripts": {
+     "preinstall": "node -e \"const ua = process.env.npm_config_user_agent || ''; if (!ua.startsWith('pnpm/')) { console.error('Use pnpm for this repo.'); process.exit(1); }\"",
+     "dev": "node scripts/dev-server.mjs next dev",
+-    "build": "next build",
++    "build": "node scripts/generate-minari-catalog.mjs --check && node --test scripts/test-catalog.mjs && next build",
+     "start": "node scripts/dev-server.mjs next start",
+     "lint": "eslint .",
+     "typecheck": "tsc --noEmit --pretty false",
+     "test:deps": "node --test scripts/dependency-next-glob.test.mjs && node scripts/dependency-smoke.mjs",
+-    "test:observations": "node scripts/test-observations.mjs"
++    "test:observations": "node scripts/test-observations.mjs",
++    "catalog:generate": "node scripts/generate-minari-catalog.mjs",
++    "catalog:check": "node scripts/generate-minari-catalog.mjs --check",
++    "test:catalog": "node --test scripts/test-catalog.mjs"
+   },
+   "dependencies": {
+     "@hookform/resolvers": "^7.0.1",
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -10,12 +10,12 @@
+ import { DatasetCard, DatasetCardIcons } from "@/components/dataset-card"
+ import { OverviewStats } from "@/components/overview-stats"
+ import { NamespaceChart } from "@/components/charts/namespace-chart"
+-import { MINARI_DATASETS, NAMESPACES } from "@/lib/minari-data"
+-import type { MinariDataset } from "@/lib/minari-data"
++import { MINARI_CATALOG, NAMESPACES } from "@/lib/minari-catalog"
++import type { MinariCatalogEntry } from "@/lib/minari-catalog"
+ import { Search, X, SlidersHorizontal, ExternalLink, GitFork } from "lucide-react"
+ 
+-const DatasetDetail = dynamic(
+-  () => import("@/components/dataset-detail").then((module) => module.DatasetDetail),
++const DatasetInspector = dynamic(
++  () => import("@/components/dataset-inspector").then((module) => module.DatasetInspector),
+   {
+     loading: () => (
+       <p role="status" className="text-sm text-muted-foreground">Loading dataset details…</p>
+@@ -27,7 +27,7 @@
+   const [search, setSearch] = useState("")
+   const searchInput = useRef<HTMLInputElement>(null)
+   const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([])
+-  const [selectedDataset, setSelectedDataset] = useState<MinariDataset | null>(null)
++  const [selectedDataset, setSelectedDataset] = useState<MinariCatalogEntry | null>(null)
+   const [showFilters, setShowFilters] = useState(true)
+   const [smokeTestSent, setSmokeTestSent] = useState(false)
+ 
+@@ -53,7 +53,7 @@
+   }, [smokeTestSent])
+ 
+   const filteredDatasets = useMemo(() => {
+-    return MINARI_DATASETS.filter((d) => {
++    return MINARI_CATALOG.filter((d) => {
+       const matchesSearch =
+         search === "" ||
+         d.id.toLowerCase().includes(search.toLowerCase()) ||
+@@ -122,7 +122,7 @@
+           </a>
+           <div className="flex items-center gap-2">
+             <Badge variant="outline" className="text-[10px] font-mono hidden sm:flex">
+-              {MINARI_DATASETS.length} datasets
++              {MINARI_CATALOG.length} datasets
+             </Badge>
+             <Button variant="outline" size="sm" className="text-xs h-8" asChild>
+               <a
+@@ -287,7 +287,7 @@
+           <section id="dataset-inspector" aria-label={selectedDataset ? "Dataset details" : "Dataset overview"} className="flex-1 min-w-0">
+             {selectedDataset ? (
+               <div className="rounded-xl border border-border/50 bg-card p-6">
+-                <DatasetDetail dataset={selectedDataset} />
++                <DatasetInspector entry={selectedDataset} />
+               </div>
+             ) : (
+               <div className="rounded-xl border border-border/50 bg-card p-6">
+--- a/components/dataset-card.tsx
++++ b/components/dataset-card.tsx
+@@ -2,12 +2,12 @@
+ 
+ import { Card } from "@/components/ui/card"
+ import { Badge } from "@/components/ui/badge"
+-import type { MinariDataset } from "@/lib/minari-data"
+-import { formatNumber } from "@/lib/minari-data"
++import type { MinariCatalogEntry } from "@/lib/minari-catalog"
++import { formatNumber } from "@/lib/format-number"
+ import { Database, Layers, ArrowRight } from "lucide-react"
+ 
+ interface DatasetCardProps {
+-  dataset: MinariDataset
++  dataset: MinariCatalogEntry
+   isSelected: boolean
+   onClick: () => void
+ }
+--- a/components/dataset-detail.tsx
++++ b/components/dataset-detail.tsx
+@@ -5,7 +5,7 @@
+ import { Separator } from "@/components/ui/separator"
+ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+ import type { MinariDataset } from "@/lib/minari-data"
+-import { formatNumber } from "@/lib/minari-data"
++import { formatNumber } from "@/lib/format-number"
+ import { buildEpisodeStats } from "@/lib/episode-stats"
+ import {
+   Database,
+--- /dev/null
++++ b/components/dataset-inspector.tsx
+@@ -0,0 +1,17 @@
++"use client"
++
++import { DatasetDetail } from "./dataset-detail"
++import { useMemo } from "react"
++import details from "@/lib/minari-details.generated.json"
++import type { MinariCatalogEntry } from "@/lib/minari-catalog"
++import type { MinariDataset } from "@/lib/minari-data"
++
++const metadata: Record<string, Omit<MinariDataset, keyof MinariCatalogEntry>> = details
++
++export function DatasetInspector({ entry }: { entry: MinariCatalogEntry }) {
++  const dataset = useMemo(() => {
++    if (!metadata[entry.id]) throw new Error(`Unknown dataset: ${entry.id}`)
++    return { ...entry, ...metadata[entry.id] }
++  }, [entry])
++  return <DatasetDetail dataset={dataset} />
++}
+--- a/components/overview-stats.tsx
++++ b/components/overview-stats.tsx
+@@ -1,27 +1,28 @@
+ "use client"
+ 
+-import { MINARI_DATASETS, formatNumber } from "@/lib/minari-data"
++import { CATALOG_TOTALS } from "@/lib/minari-catalog"
++import { formatNumber } from "@/lib/format-number"
+ import { Database, Layers, FolderOpen, ArrowDownToLine } from "lucide-react"
+ 
+ const stats = [
+   {
+     label: "Datasets",
+-    value: MINARI_DATASETS.length,
++    value: CATALOG_TOTALS.datasets,
+     icon: FolderOpen,
+   },
+   {
+     label: "Total Episodes",
+-    value: MINARI_DATASETS.reduce((s, d) => s + d.totalEpisodes, 0),
++    value: CATALOG_TOTALS.episodes,
+     icon: Layers,
+   },
+   {
+     label: "Total Steps",
+-    value: MINARI_DATASETS.reduce((s, d) => s + d.totalSteps, 0),
++    value: CATALOG_TOTALS.steps,
+     icon: Database,
+   },
+   {
+     label: "Total Downloads",
+-    value: MINARI_DATASETS.reduce((s, d) => s + d.downloads, 0),
++    value: CATALOG_TOTALS.downloads,
+     icon: ArrowDownToLine,
+   },
+ ]
+--- a/components/charts/namespace-chart.tsx
++++ b/components/charts/namespace-chart.tsx
+@@ -1,7 +1,8 @@
+ "use client"
+ 
+ import { NamespacePlots } from "./namespace-plots"
+-import { MINARI_DATASETS, NAMESPACES, formatNumber } from "@/lib/minari-data"
++import { NAMESPACE_STATS } from "@/lib/minari-catalog"
++import { formatNumber } from "@/lib/format-number"
+ 
+ const COLORS = [
+   "oklch(0.72 0.15 195)",
+@@ -13,16 +14,7 @@
+ ]
+ 
+ export function NamespaceChart() {
+-  const namespaceData = NAMESPACES.map((ns) => {
+-    const datasets = MINARI_DATASETS.filter((d) => d.namespace === ns)
+-    return {
+-      name: ns,
+-      datasets: datasets.length,
+-      episodes: datasets.reduce((s, d) => s + d.totalEpisodes, 0),
+-      steps: datasets.reduce((s, d) => s + d.totalSteps, 0),
+-      downloads: datasets.reduce((s, d) => s + d.downloads, 0),
+-    }
+-  })
++  const namespaceData = NAMESPACE_STATS
+ 
+   return (
+     <div className="space-y-6">
+--- a/components/charts/namespace-plots.tsx
++++ b/components/charts/namespace-plots.tsx
+@@ -1,4 +1,4 @@
+-import { formatNumber } from "@/lib/minari-data"
++import { formatNumber } from "@/lib/format-number"
+ 
+ interface NamespacePlotsProps {
+   data: { name: string; datasets: number; episodes: number }[]
+--- a/lib/minari-data.ts
++++ b/lib/minari-data.ts
+@@ -784,9 +784,3 @@
+ export const ENV_NAMES = [...new Set(MINARI_DATASETS.map(d => d.envName))]
+ 
+ export const ALL_TAGS = [...new Set(MINARI_DATASETS.flatMap(d => d.tags))].sort()
+-
+-export function formatNumber(n: number): string {
+-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+-  return n.toString()
+-}
+--- /dev/null
++++ b/lib/minari-catalog.ts
+@@ -0,0 +1,12 @@
++import catalog from "./minari-catalog.generated.json"
++import type { MinariDataset } from "./minari-data"
++
++export type MinariCatalogEntry = Pick<MinariDataset,
++  "id" | "namespace" | "envName" | "datasetName" | "version" | "totalEpisodes"
++  | "totalSteps" | "actionSpaceType" | "actionSpaceDims" | "observationSpaceType"
++  | "observationSpaceDims" | "description" | "tags">
++
++export const MINARI_CATALOG: MinariCatalogEntry[] = catalog.datasets
++export const NAMESPACES = catalog.namespaces
++export const CATALOG_TOTALS = catalog.totals
++export const NAMESPACE_STATS = catalog.namespaceStats
+--- /dev/null
++++ b/lib/format-number.ts
+@@ -0,0 +1,5 @@
++export function formatNumber(n: number): string {
++  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
++  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
++  return n.toString()
++}
+--- /dev/null
++++ b/lib/minari-catalog.generated.json
+@@ -0,0 +1,743 @@
++{
++  "datasets": [
++    {
++      "id": "D4RL/pointmaze/umaze-v2",
++      "namespace": "D4RL",
++      "envName": "Point Maze",
++      "datasetName": "Umaze",
++      "version": 2,
++      "totalEpisodes": 1267,
++      "totalSteps": 305281,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 2,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 6,
++      "description": "Point maze navigation in a U-shaped maze using a waypoint controller policy.",
++      "tags": [
++        "D4RL",
++        "Maze",
++        "Navigation",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "D4RL/pointmaze/medium-v2",
++      "namespace": "D4RL",
++      "envName": "Point Maze",
++      "datasetName": "Medium",
++      "version": 2,
++      "totalEpisodes": 2004,
++      "totalSteps": 999982,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 2,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 6,
++      "description": "Point maze navigation in a medium-difficulty maze layout with complex paths.",
++      "tags": [
++        "D4RL",
++        "Maze",
++        "Navigation",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "D4RL/pointmaze/large-v2",
++      "namespace": "D4RL",
++      "envName": "Point Maze",
++      "datasetName": "Large",
++      "version": 2,
++      "totalEpisodes": 4097,
++      "totalSteps": 3995934,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 2,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 6,
++      "description": "Point maze navigation in a large maze with lengthy trajectories and sparse rewards.",
++      "tags": [
++        "D4RL",
++        "Maze",
++        "Navigation",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "D4RL/pointmaze/open-v2",
++      "namespace": "D4RL",
++      "envName": "Point Maze",
++      "datasetName": "Open",
++      "version": 2,
++      "totalEpisodes": 1187,
++      "totalSteps": 248105,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 2,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 6,
++      "description": "Point maze in an open environment with minimal obstacles.",
++      "tags": [
++        "D4RL",
++        "Maze",
++        "Navigation",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "D4RL/antmaze/umaze-v2",
++      "namespace": "D4RL",
++      "envName": "Ant Maze",
++      "datasetName": "Umaze",
++      "version": 2,
++      "totalEpisodes": 1499,
++      "totalSteps": 999926,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 8,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 29,
++      "description": "Ant robot navigating a U-shaped maze. High-dimensional continuous control with 8 joint actuators.",
++      "tags": [
++        "D4RL",
++        "Maze",
++        "MuJoCo",
++        "Locomotion"
++      ]
++    },
++    {
++      "id": "D4RL/antmaze/medium-play-v2",
++      "namespace": "D4RL",
++      "envName": "Ant Maze",
++      "datasetName": "Medium-Play",
++      "version": 2,
++      "totalEpisodes": 2998,
++      "totalSteps": 1999928,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 8,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 29,
++      "description": "Ant robot exploring diverse paths in a medium maze for play-style data collection.",
++      "tags": [
++        "D4RL",
++        "Maze",
++        "MuJoCo",
++        "Locomotion"
++      ]
++    },
++    {
++      "id": "D4RL/antmaze/large-diverse-v2",
++      "namespace": "D4RL",
++      "envName": "Ant Maze",
++      "datasetName": "Large-Diverse",
++      "version": 2,
++      "totalEpisodes": 3998,
++      "totalSteps": 3999696,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 8,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 29,
++      "description": "Ant robot in a large maze with highly diverse trajectories and challenging navigation.",
++      "tags": [
++        "D4RL",
++        "Maze",
++        "MuJoCo",
++        "Locomotion"
++      ]
++    },
++    {
++      "id": "D4RL/door/human-v2",
++      "namespace": "D4RL",
++      "envName": "Door",
++      "datasetName": "Human",
++      "version": 2,
++      "totalEpisodes": 6729,
++      "totalSteps": 327680,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 28,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 39,
++      "description": "Robotic hand opening a door, collected via human teleoperation demonstrations.",
++      "tags": [
++        "D4RL",
++        "Adroit",
++        "Dexterous",
++        "Human"
++      ]
++    },
++    {
++      "id": "D4RL/door/cloned-v2",
++      "namespace": "D4RL",
++      "envName": "Door",
++      "datasetName": "Cloned",
++      "version": 2,
++      "totalEpisodes": 8192,
++      "totalSteps": 491520,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 28,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 39,
++      "description": "Robotic hand opening a door, collected from a behavioral cloning policy trained on human data.",
++      "tags": [
++        "D4RL",
++        "Adroit",
++        "Dexterous",
++        "Cloned"
++      ]
++    },
++    {
++      "id": "D4RL/door/expert-v2",
++      "namespace": "D4RL",
++      "envName": "Door",
++      "datasetName": "Expert",
++      "version": 2,
++      "totalEpisodes": 5000,
++      "totalSteps": 250000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 28,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 39,
++      "description": "Robotic hand opening a door, collected from an RL-trained expert policy.",
++      "tags": [
++        "D4RL",
++        "Adroit",
++        "Dexterous",
++        "Expert"
++      ]
++    },
++    {
++      "id": "D4RL/pen/human-v2",
++      "namespace": "D4RL",
++      "envName": "Pen",
++      "datasetName": "Human",
++      "version": 2,
++      "totalEpisodes": 5000,
++      "totalSteps": 500000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 24,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 45,
++      "description": "Dexterous pen manipulation using a Shadow Hand, collected via human teleoperation.",
++      "tags": [
++        "D4RL",
++        "Adroit",
++        "Dexterous",
++        "Human"
++      ]
++    },
++    {
++      "id": "D4RL/pen/expert-v2",
++      "namespace": "D4RL",
++      "envName": "Pen",
++      "datasetName": "Expert",
++      "version": 2,
++      "totalEpisodes": 5000,
++      "totalSteps": 500000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 24,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 45,
++      "description": "Dexterous pen manipulation using a Shadow Hand, expert RL policy demonstrations.",
++      "tags": [
++        "D4RL",
++        "Adroit",
++        "Dexterous",
++        "Expert"
++      ]
++    },
++    {
++      "id": "D4RL/hammer/human-v2",
++      "namespace": "D4RL",
++      "envName": "Hammer",
++      "datasetName": "Human",
++      "version": 2,
++      "totalEpisodes": 3214,
++      "totalSteps": 642800,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 26,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 46,
++      "description": "Robotic hand using a hammer to drive a nail, teleoperated by humans.",
++      "tags": [
++        "D4RL",
++        "Adroit",
++        "Dexterous",
++        "Human"
++      ]
++    },
++    {
++      "id": "D4RL/hammer/expert-v2",
++      "namespace": "D4RL",
++      "envName": "Hammer",
++      "datasetName": "Expert",
++      "version": 2,
++      "totalEpisodes": 5000,
++      "totalSteps": 1000000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 26,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 46,
++      "description": "Robotic hand using a hammer to drive a nail, collected from expert RL policy.",
++      "tags": [
++        "D4RL",
++        "Adroit",
++        "Dexterous",
++        "Expert"
++      ]
++    },
++    {
++      "id": "D4RL/relocate/human-v2",
++      "namespace": "D4RL",
++      "envName": "Relocate",
++      "datasetName": "Human",
++      "version": 2,
++      "totalEpisodes": 3467,
++      "totalSteps": 693400,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 30,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 39,
++      "description": "Object relocation using a dexterous robotic hand, collected from human demonstrations.",
++      "tags": [
++        "D4RL",
++        "Adroit",
++        "Dexterous",
++        "Human"
++      ]
++    },
++    {
++      "id": "D4RL/kitchen/complete-v2",
++      "namespace": "D4RL",
++      "envName": "Kitchen",
++      "datasetName": "Complete",
++      "version": 2,
++      "totalEpisodes": 3680,
++      "totalSteps": 1070440,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 9,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 60,
++      "description": "Kitchen manipulation environment with a 9-DOF Franka robot completing all subtasks.",
++      "tags": [
++        "D4RL",
++        "Kitchen",
++        "Manipulation",
++        "Multi-task"
++      ]
++    },
++    {
++      "id": "D4RL/kitchen/partial-v2",
++      "namespace": "D4RL",
++      "envName": "Kitchen",
++      "datasetName": "Partial",
++      "version": 2,
++      "totalEpisodes": 3680,
++      "totalSteps": 1070440,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 9,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 60,
++      "description": "Kitchen manipulation with partial task completion demonstrations.",
++      "tags": [
++        "D4RL",
++        "Kitchen",
++        "Manipulation",
++        "Multi-task"
++      ]
++    },
++    {
++      "id": "minigrid/fourrooms-v0",
++      "namespace": "MiniGrid",
++      "envName": "FourRooms",
++      "datasetName": "Optimal",
++      "version": 0,
++      "totalEpisodes": 10000,
++      "totalSteps": 380000,
++      "actionSpaceType": "Discrete",
++      "actionSpaceDims": 7,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 147,
++      "description": "MiniGrid FourRooms environment with optimal BFS-generated trajectories.",
++      "tags": [
++        "MiniGrid",
++        "Grid",
++        "Navigation",
++        "Discrete"
++      ]
++    },
++    {
++      "id": "minigrid/babyai-pickup-v0",
++      "namespace": "MiniGrid",
++      "envName": "BabyAI Pickup",
++      "datasetName": "Optimal",
++      "version": 0,
++      "totalEpisodes": 50000,
++      "totalSteps": 450000,
++      "actionSpaceType": "Discrete",
++      "actionSpaceDims": 7,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 147,
++      "description": "BabyAI Pickup task: pick up an object of a specified type and color.",
++      "tags": [
++        "MiniGrid",
++        "BabyAI",
++        "Instruction",
++        "Discrete"
++      ]
++    },
++    {
++      "id": "minigrid/babyai-gotobj-v0",
++      "namespace": "MiniGrid",
++      "envName": "BabyAI GoToObj",
++      "datasetName": "Optimal",
++      "version": 0,
++      "totalEpisodes": 50000,
++      "totalSteps": 300000,
++      "actionSpaceType": "Discrete",
++      "actionSpaceDims": 7,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 147,
++      "description": "BabyAI GoToObj: Navigate to an object in a single room.",
++      "tags": [
++        "MiniGrid",
++        "BabyAI",
++        "Instruction",
++        "Discrete"
++      ]
++    },
++    {
++      "id": "minigrid/babyai-bosslevel-v0",
++      "namespace": "MiniGrid",
++      "envName": "BabyAI BossLevel",
++      "datasetName": "Optimal",
++      "version": 0,
++      "totalEpisodes": 50000,
++      "totalSteps": 4500000,
++      "actionSpaceType": "Discrete",
++      "actionSpaceDims": 7,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 147,
++      "description": "BabyAI BossLevel: The most challenging BabyAI task combining all skills.",
++      "tags": [
++        "MiniGrid",
++        "BabyAI",
++        "Instruction",
++        "Discrete"
++      ]
++    },
++    {
++      "id": "atari/breakout/expert-v0",
++      "namespace": "Atari",
++      "envName": "Breakout",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 100,
++      "totalSteps": 458320,
++      "actionSpaceType": "Discrete",
++      "actionSpaceDims": 4,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 84,
++      "description": "Atari Breakout played by a CleanRL PPO-trained expert agent.",
++      "tags": [
++        "Atari",
++        "Arcade",
++        "Expert",
++        "Discrete"
++      ]
++    },
++    {
++      "id": "atari/pong/expert-v0",
++      "namespace": "Atari",
++      "envName": "Pong",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 100,
++      "totalSteps": 125000,
++      "actionSpaceType": "Discrete",
++      "actionSpaceDims": 6,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 84,
++      "description": "Atari Pong played by a CleanRL PPO-trained expert agent.",
++      "tags": [
++        "Atari",
++        "Arcade",
++        "Expert",
++        "Discrete"
++      ]
++    },
++    {
++      "id": "atari/spaceinvaders/expert-v0",
++      "namespace": "Atari",
++      "envName": "Space Invaders",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 100,
++      "totalSteps": 210500,
++      "actionSpaceType": "Discrete",
++      "actionSpaceDims": 6,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 84,
++      "description": "Atari Space Invaders played by expert PPO policy from CleanRL.",
++      "tags": [
++        "Atari",
++        "Arcade",
++        "Expert",
++        "Discrete"
++      ]
++    },
++    {
++      "id": "atari/seaquest/expert-v0",
++      "namespace": "Atari",
++      "envName": "Seaquest",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 100,
++      "totalSteps": 380000,
++      "actionSpaceType": "Discrete",
++      "actionSpaceDims": 18,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 84,
++      "description": "Atari Seaquest played by expert PPO policy.",
++      "tags": [
++        "Atari",
++        "Arcade",
++        "Expert",
++        "Discrete"
++      ]
++    },
++    {
++      "id": "atari/montezumarevenge/expert-v0",
++      "namespace": "Atari",
++      "envName": "Montezuma Revenge",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 100,
++      "totalSteps": 520000,
++      "actionSpaceType": "Discrete",
++      "actionSpaceDims": 18,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 84,
++      "description": "Atari Montezuma's Revenge - notoriously hard exploration game with sparse rewards.",
++      "tags": [
++        "Atari",
++        "Arcade",
++        "Expert",
++        "Discrete",
++        "Sparse"
++      ]
++    },
++    {
++      "id": "mujoco/halfcheetah/expert-v0",
++      "namespace": "MuJoCo",
++      "envName": "HalfCheetah",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 1000,
++      "totalSteps": 1000000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 6,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 17,
++      "description": "HalfCheetah locomotion from a SAC-trained expert policy.",
++      "tags": [
++        "MuJoCo",
++        "Locomotion",
++        "Expert",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "mujoco/hopper/expert-v0",
++      "namespace": "MuJoCo",
++      "envName": "Hopper",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 1000,
++      "totalSteps": 1000000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 3,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 11,
++      "description": "Hopper single-leg locomotion from a SAC-trained expert.",
++      "tags": [
++        "MuJoCo",
++        "Locomotion",
++        "Expert",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "mujoco/walker2d/expert-v0",
++      "namespace": "MuJoCo",
++      "envName": "Walker2d",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 1000,
++      "totalSteps": 1000000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 6,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 17,
++      "description": "Walker2d bipedal locomotion from an SAC-trained expert policy.",
++      "tags": [
++        "MuJoCo",
++        "Locomotion",
++        "Expert",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "mujoco/ant/expert-v0",
++      "namespace": "MuJoCo",
++      "envName": "Ant",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 1000,
++      "totalSteps": 1000000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 8,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 27,
++      "description": "Ant quadruped locomotion from a SAC-trained expert policy.",
++      "tags": [
++        "MuJoCo",
++        "Locomotion",
++        "Expert",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "metaworld/button-press-v2",
++      "namespace": "MetaWorld",
++      "envName": "Button Press",
++      "datasetName": "Expert",
++      "version": 2,
++      "totalEpisodes": 2500,
++      "totalSteps": 375000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 4,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 39,
++      "description": "MetaWorld button pressing task with a Sawyer robot arm.",
++      "tags": [
++        "MetaWorld",
++        "Manipulation",
++        "Expert",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "metaworld/drawer-open-v2",
++      "namespace": "MetaWorld",
++      "envName": "Drawer Open",
++      "datasetName": "Expert",
++      "version": 2,
++      "totalEpisodes": 2500,
++      "totalSteps": 375000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 4,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 39,
++      "description": "MetaWorld drawer opening task with a Sawyer robot arm.",
++      "tags": [
++        "MetaWorld",
++        "Manipulation",
++        "Expert",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "metaworld/pick-place-v2",
++      "namespace": "MetaWorld",
++      "envName": "Pick Place",
++      "datasetName": "Expert",
++      "version": 2,
++      "totalEpisodes": 2500,
++      "totalSteps": 375000,
++      "actionSpaceType": "Box",
++      "actionSpaceDims": 4,
++      "observationSpaceType": "Box",
++      "observationSpaceDims": 39,
++      "description": "MetaWorld pick and place manipulation task with a Sawyer robot arm.",
++      "tags": [
++        "MetaWorld",
++        "Manipulation",
++        "Expert",
++        "Continuous"
++      ]
++    },
++    {
++      "id": "webagents/webarena-v0",
++      "namespace": "WebAgents",
++      "envName": "WebArena",
++      "datasetName": "Expert",
++      "version": 0,
++      "totalEpisodes": 812,
++      "totalSteps": 8950,
++      "actionSpaceType": "Text",
++      "actionSpaceDims": 0,
++      "observationSpaceType": "Dict",
++      "observationSpaceDims": 0,
++      "description": "WebArena web navigation tasks with human expert demonstrations.",
++      "tags": [
++        "WebAgents",
++        "Web",
++        "NLP",
++        "Multimodal"
++      ]
++    }
++  ],
++  "namespaces": [
++    "D4RL",
++    "MiniGrid",
++    "Atari",
++    "MuJoCo",
++    "MetaWorld",
++    "WebAgents"
++  ],
++  "totals": {
++    "datasets": 34,
++    "episodes": 238824,
++    "steps": 31552902,
++    "downloads": 97144
++  },
++  "namespaceStats": [
++    {
++      "name": "D4RL",
++      "datasets": 17,
++      "episodes": 66012,
++      "steps": 19095132,
++      "downloads": 50055
++    },
++    {
++      "name": "MiniGrid",
++      "datasets": 4,
++      "episodes": 160000,
++      "steps": 5630000,
++      "downloads": 9512
++    },
++    {
++      "name": "Atari",
++      "datasets": 5,
++      "episodes": 500,
++      "steps": 1693820,
++      "downloads": 12656
++    },
++    {
++      "name": "MuJoCo",
++      "datasets": 4,
++      "episodes": 4000,
++      "steps": 4000000,
++      "downloads": 14731
++    },
++    {
++      "name": "MetaWorld",
++      "datasets": 3,
++      "episodes": 7500,
++      "steps": 1125000,
++      "downloads": 8113
++    },
++    {
++      "name": "WebAgents",
++      "datasets": 1,
++      "episodes": 812,
++      "steps": 8950,
++      "downloads": 2077
++    }
++  ]
++}
+--- /dev/null
++++ b/lib/minari-details.generated.json
+@@ -0,0 +1,478 @@
++{
++  "D4RL/pointmaze/umaze-v2": {
++    "algorithmName": "Waypoint Controller",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 82.4,
++      "rewardsStd": 35.2,
++      "rewardsMin": 0,
++      "rewardsMax": 158.3,
++      "avgEpisodeLength": 241
++    },
++    "downloads": 4895,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/pointmaze/medium-v2": {
++    "algorithmName": "Waypoint Controller",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 64.1,
++      "rewardsStd": 42.8,
++      "rewardsMin": -12,
++      "rewardsMax": 192.5,
++      "avgEpisodeLength": 499
++    },
++    "downloads": 3210,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/pointmaze/large-v2": {
++    "algorithmName": "Waypoint Controller",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 48.7,
++      "rewardsStd": 55.1,
++      "rewardsMin": -25,
++      "rewardsMax": 280,
++      "avgEpisodeLength": 975
++    },
++    "downloads": 2780,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/pointmaze/open-v2": {
++    "algorithmName": "Waypoint Controller",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 95.3,
++      "rewardsStd": 22.1,
++      "rewardsMin": 15,
++      "rewardsMax": 132,
++      "avgEpisodeLength": 209
++    },
++    "downloads": 1950,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/antmaze/umaze-v2": {
++    "algorithmName": "Waypoint Controller",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 0.62,
++      "rewardsStd": 0.38,
++      "rewardsMin": 0,
++      "rewardsMax": 1,
++      "avgEpisodeLength": 667
++    },
++    "downloads": 4120,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/antmaze/medium-play-v2": {
++    "algorithmName": "Diverse Controller",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 0.41,
++      "rewardsStd": 0.42,
++      "rewardsMin": 0,
++      "rewardsMax": 1,
++      "avgEpisodeLength": 667
++    },
++    "downloads": 3540,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/antmaze/large-diverse-v2": {
++    "algorithmName": "Diverse Controller",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 0.28,
++      "rewardsStd": 0.39,
++      "rewardsMin": 0,
++      "rewardsMax": 1,
++      "avgEpisodeLength": 1000
++    },
++    "downloads": 2890,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/door/human-v2": {
++    "algorithmName": "Human Teleoperation",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 12.8,
++      "rewardsStd": 18.5,
++      "rewardsMin": -6.2,
++      "rewardsMax": 82.4,
++      "avgEpisodeLength": 49
++    },
++    "downloads": 3150,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/door/cloned-v2": {
++    "algorithmName": "Behavioral Cloning",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 8.2,
++      "rewardsStd": 15.3,
++      "rewardsMin": -8.1,
++      "rewardsMax": 75.2,
++      "avgEpisodeLength": 60
++    },
++    "downloads": 2440,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/door/expert-v2": {
++    "algorithmName": "RL Expert Policy",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 52.1,
++      "rewardsStd": 12.4,
++      "rewardsMin": 18,
++      "rewardsMax": 85.6,
++      "avgEpisodeLength": 50
++    },
++    "downloads": 3680,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/pen/human-v2": {
++    "algorithmName": "Human Teleoperation",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 42.5,
++      "rewardsStd": 28.3,
++      "rewardsMin": -10,
++      "rewardsMax": 120,
++      "avgEpisodeLength": 100
++    },
++    "downloads": 2750,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/pen/expert-v2": {
++    "algorithmName": "RL Expert Policy",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 98.4,
++      "rewardsStd": 15.2,
++      "rewardsMin": 30,
++      "rewardsMax": 140,
++      "avgEpisodeLength": 100
++    },
++    "downloads": 3190,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/hammer/human-v2": {
++    "algorithmName": "Human Teleoperation",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 1.2,
++      "rewardsStd": 2.8,
++      "rewardsMin": -3,
++      "rewardsMax": 15.4,
++      "avgEpisodeLength": 200
++    },
++    "downloads": 1890,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/hammer/expert-v2": {
++    "algorithmName": "RL Expert Policy",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 78.6,
++      "rewardsStd": 22.1,
++      "rewardsMin": 5,
++      "rewardsMax": 125,
++      "avgEpisodeLength": 200
++    },
++    "downloads": 2340,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/relocate/human-v2": {
++    "algorithmName": "Human Teleoperation",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": -2.5,
++      "rewardsStd": 4.1,
++      "rewardsMin": -15,
++      "rewardsMax": 8.2,
++      "avgEpisodeLength": 200
++    },
++    "downloads": 1650,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/kitchen/complete-v2": {
++    "algorithmName": "Human Teleoperation",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 3.2,
++      "rewardsStd": 1.1,
++      "rewardsMin": 0,
++      "rewardsMax": 4,
++      "avgEpisodeLength": 291
++    },
++    "downloads": 3020,
++    "createdAt": "2024-11-05"
++  },
++  "D4RL/kitchen/partial-v2": {
++    "algorithmName": "Human Teleoperation",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 1.8,
++      "rewardsStd": 1,
++      "rewardsMin": 0,
++      "rewardsMax": 4,
++      "avgEpisodeLength": 291
++    },
++    "downloads": 2560,
++    "createdAt": "2024-11-05"
++  },
++  "minigrid/fourrooms-v0": {
++    "algorithmName": "BFS Optimal",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 0.92,
++      "rewardsStd": 0.12,
++      "rewardsMin": 0,
++      "rewardsMax": 1,
++      "avgEpisodeLength": 38
++    },
++    "downloads": 4052,
++    "createdAt": "2024-11-19"
++  },
++  "minigrid/babyai-pickup-v0": {
++    "algorithmName": "BFS Optimal",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 0.95,
++      "rewardsStd": 0.08,
++      "rewardsMin": 0,
++      "rewardsMax": 1,
++      "avgEpisodeLength": 9
++    },
++    "downloads": 1820,
++    "createdAt": "2024-11-19"
++  },
++  "minigrid/babyai-gotobj-v0": {
++    "algorithmName": "BFS Optimal",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 0.97,
++      "rewardsStd": 0.05,
++      "rewardsMin": 0,
++      "rewardsMax": 1,
++      "avgEpisodeLength": 6
++    },
++    "downloads": 1540,
++    "createdAt": "2024-11-19"
++  },
++  "minigrid/babyai-bosslevel-v0": {
++    "algorithmName": "BFS Optimal",
++    "author": "Farama Foundation",
++    "minariVersion": "0.4.3",
++    "episodeSummary": {
++      "rewardsMean": 0.68,
++      "rewardsStd": 0.35,
++      "rewardsMin": 0,
++      "rewardsMax": 1,
++      "avgEpisodeLength": 90
++    },
++    "downloads": 2100,
++    "createdAt": "2024-11-19"
++  },
++  "atari/breakout/expert-v0": {
++    "algorithmName": "CleanRL PPO",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.3",
++    "episodeSummary": {
++      "rewardsMean": 312.5,
++      "rewardsStd": 89.2,
++      "rewardsMin": 42,
++      "rewardsMax": 520,
++      "avgEpisodeLength": 4583
++    },
++    "downloads": 3976,
++    "createdAt": "2025-03-22"
++  },
++  "atari/pong/expert-v0": {
++    "algorithmName": "CleanRL PPO",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.3",
++    "episodeSummary": {
++      "rewardsMean": 19.8,
++      "rewardsStd": 1.5,
++      "rewardsMin": 14,
++      "rewardsMax": 21,
++      "avgEpisodeLength": 1250
++    },
++    "downloads": 2840,
++    "createdAt": "2025-03-22"
++  },
++  "atari/spaceinvaders/expert-v0": {
++    "algorithmName": "CleanRL PPO",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.3",
++    "episodeSummary": {
++      "rewardsMean": 1285,
++      "rewardsStd": 420,
++      "rewardsMin": 280,
++      "rewardsMax": 2450,
++      "avgEpisodeLength": 2105
++    },
++    "downloads": 2210,
++    "createdAt": "2025-03-22"
++  },
++  "atari/seaquest/expert-v0": {
++    "algorithmName": "CleanRL PPO",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.3",
++    "episodeSummary": {
++      "rewardsMean": 2450,
++      "rewardsStd": 850,
++      "rewardsMin": 400,
++      "rewardsMax": 5200,
++      "avgEpisodeLength": 3800
++    },
++    "downloads": 1680,
++    "createdAt": "2025-03-22"
++  },
++  "atari/montezumarevenge/expert-v0": {
++    "algorithmName": "CleanRL PPO",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.3",
++    "episodeSummary": {
++      "rewardsMean": 2100,
++      "rewardsStd": 1800,
++      "rewardsMin": 0,
++      "rewardsMax": 8500,
++      "avgEpisodeLength": 5200
++    },
++    "downloads": 1950,
++    "createdAt": "2025-03-22"
++  },
++  "mujoco/halfcheetah/expert-v0": {
++    "algorithmName": "SAC Expert",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.0",
++    "episodeSummary": {
++      "rewardsMean": 11200,
++      "rewardsStd": 1500,
++      "rewardsMin": 5400,
++      "rewardsMax": 14800,
++      "avgEpisodeLength": 1000
++    },
++    "downloads": 4641,
++    "createdAt": "2024-11-06"
++  },
++  "mujoco/hopper/expert-v0": {
++    "algorithmName": "SAC Expert",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.0",
++    "episodeSummary": {
++      "rewardsMean": 3420,
++      "rewardsStd": 280,
++      "rewardsMin": 1800,
++      "rewardsMax": 3780,
++      "avgEpisodeLength": 1000
++    },
++    "downloads": 3890,
++    "createdAt": "2024-11-06"
++  },
++  "mujoco/walker2d/expert-v0": {
++    "algorithmName": "SAC Expert",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.0",
++    "episodeSummary": {
++      "rewardsMean": 4850,
++      "rewardsStd": 420,
++      "rewardsMin": 2200,
++      "rewardsMax": 5500,
++      "avgEpisodeLength": 1000
++    },
++    "downloads": 3240,
++    "createdAt": "2024-11-06"
++  },
++  "mujoco/ant/expert-v0": {
++    "algorithmName": "SAC Expert",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.0",
++    "episodeSummary": {
++      "rewardsMean": 5820,
++      "rewardsStd": 680,
++      "rewardsMin": 2800,
++      "rewardsMax": 7200,
++      "avgEpisodeLength": 1000
++    },
++    "downloads": 2960,
++    "createdAt": "2024-11-06"
++  },
++  "metaworld/button-press-v2": {
++    "algorithmName": "SAC Expert",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.3",
++    "episodeSummary": {
++      "rewardsMean": 4200,
++      "rewardsStd": 350,
++      "rewardsMin": 2800,
++      "rewardsMax": 4800,
++      "avgEpisodeLength": 150
++    },
++    "downloads": 3393,
++    "createdAt": "2025-05-07"
++  },
++  "metaworld/drawer-open-v2": {
++    "algorithmName": "SAC Expert",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.3",
++    "episodeSummary": {
++      "rewardsMean": 3800,
++      "rewardsStd": 420,
++      "rewardsMin": 2100,
++      "rewardsMax": 4600,
++      "avgEpisodeLength": 150
++    },
++    "downloads": 2180,
++    "createdAt": "2025-05-07"
++  },
++  "metaworld/pick-place-v2": {
++    "algorithmName": "SAC Expert",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.3",
++    "episodeSummary": {
++      "rewardsMean": 3200,
++      "rewardsStd": 580,
++      "rewardsMin": 1500,
++      "rewardsMax": 4400,
++      "avgEpisodeLength": 150
++    },
++    "downloads": 2540,
++    "createdAt": "2025-05-07"
++  },
++  "webagents/webarena-v0": {
++    "algorithmName": "Human Demonstrations",
++    "author": "Farama Foundation",
++    "minariVersion": "0.5.3",
++    "episodeSummary": {
++      "rewardsMean": 0.42,
++      "rewardsStd": 0.38,
++      "rewardsMin": 0,
++      "rewardsMax": 1,
++      "avgEpisodeLength": 11
++    },
++    "downloads": 2077,
++    "createdAt": "2025-05-15"
++  }
++}
+--- /dev/null
++++ b/scripts/generate-minari-catalog.mjs
+@@ -0,0 +1,40 @@
++import { readFile, writeFile } from "node:fs/promises"
++import { MINARI_DATASETS, NAMESPACES } from "../lib/minari-data.ts"
++
++const fields = [
++  "id", "namespace", "envName", "datasetName", "version", "totalEpisodes",
++  "totalSteps", "actionSpaceType", "actionSpaceDims", "observationSpaceType",
++  "observationSpaceDims", "description", "tags",
++]
++const sum = (datasets, field) => datasets.reduce((total, dataset) => total + dataset[field], 0)
++const catalog = {
++  datasets: MINARI_DATASETS.map((dataset) => Object.fromEntries(fields.map((field) => [field, dataset[field]]))),
++  namespaces: NAMESPACES,
++  totals: {
++    datasets: MINARI_DATASETS.length,
++    episodes: sum(MINARI_DATASETS, "totalEpisodes"),
++    steps: sum(MINARI_DATASETS, "totalSteps"),
++    downloads: sum(MINARI_DATASETS, "downloads"),
++  },
++  namespaceStats: NAMESPACES.map((name) => {
++    const datasets = MINARI_DATASETS.filter((dataset) => dataset.namespace === name)
++    return { name, datasets: datasets.length, episodes: sum(datasets, "totalEpisodes"),
++      steps: sum(datasets, "totalSteps"), downloads: sum(datasets, "downloads") }
++  }),
++}
++const output = JSON.stringify(catalog, null, 2) + "\n"
++const details = Object.fromEntries(MINARI_DATASETS.map((dataset) => [dataset.id,
++  Object.fromEntries(Object.entries(dataset).filter(([field]) => !fields.includes(field))),
++]))
++for (const [name, content] of [
++  ["minari-catalog.generated.json", output],
++  ["minari-details.generated.json", JSON.stringify(details, null, 2) + "\n"],
++]) {
++  const target = new URL(`../lib/${name}`, import.meta.url)
++  if (process.argv.includes("--check")) {
++    const current = await readFile(target, "utf8")
++    if (current !== content) throw new Error("Catalogue is stale; run pnpm catalog:generate")
++  } else {
++    await writeFile(target, content)
++  }
++}
+--- /dev/null
++++ b/scripts/test-catalog.mjs
+@@ -0,0 +1,52 @@
++import assert from "node:assert/strict"
++import { readFile } from "node:fs/promises"
++import test from "node:test"
++import { MINARI_DATASETS, NAMESPACES } from "../lib/minari-data.ts"
++
++const catalog = JSON.parse(await readFile(new URL("../lib/minari-catalog.generated.json", import.meta.url), "utf8"))
++const details = JSON.parse(await readFile(new URL("../lib/minari-details.generated.json", import.meta.url), "utf8"))
++const searchable = ["id", "envName", "datasetName", "description"]
++function matches(dataset, query, namespaces) {
++  const text = query.toLowerCase()
++  return (searchable.some((field) => dataset[field].toLowerCase().includes(text))
++    || dataset.tags.some((tag) => tag.toLowerCase().includes(text)))
++    && (namespaces.length === 0 || namespaces.includes(dataset.namespace))
++}
++
++test("catalogue retains every card/search value, order and unique dataset identity", () => {
++  assert.equal(catalog.datasets.length, MINARI_DATASETS.length)
++  assert.equal(new Set(catalog.datasets.map((dataset) => dataset.id)).size, MINARI_DATASETS.length)
++  catalog.datasets.forEach((entry, index) => {
++    for (const [key, value] of Object.entries(entry)) assert.deepEqual(value, MINARI_DATASETS[index][key])
++    assert.deepEqual({ ...entry, ...details[entry.id] }, MINARI_DATASETS[index])
++    assert.equal(Object.keys(entry).some((key) => key in details[entry.id]), false)
++  })
++  assert.deepEqual(catalog.namespaces, NAMESPACES)
++})
++
++test("search and every namespace combination retain the same results", () => {
++  const queries = new Set(["", "Atari", "aTaRi", "no-such-dataset", ...MINARI_DATASETS.flatMap((dataset) => [
++    ...searchable.map((field) => dataset[field]), ...dataset.tags,
++  ])])
++  for (let mask = 0; mask < 2 ** NAMESPACES.length; mask++) {
++    const namespaces = NAMESPACES.filter((_, index) => mask & (1 << index))
++    for (const query of queries) {
++      const ids = (datasets) => datasets.filter((dataset) => matches(dataset, query, namespaces)).map((dataset) => dataset.id)
++      assert.deepEqual(ids(catalog.datasets), ids(MINARI_DATASETS), `${query}: ${namespaces.join(",")}`)
++    }
++  }
++  assert.equal(catalog.datasets.filter((dataset) => matches(dataset, "Atari", [])).length, 5)
++})
++
++test("overview and namespace totals match the complete records", () => {
++  const totals = (datasets) => ({
++    datasets: datasets.length,
++    episodes: datasets.reduce((total, dataset) => total + dataset.totalEpisodes, 0),
++    steps: datasets.reduce((total, dataset) => total + dataset.totalSteps, 0),
++    downloads: datasets.reduce((total, dataset) => total + dataset.downloads, 0),
++  })
++  assert.deepEqual(catalog.totals, totals(MINARI_DATASETS))
++  assert.deepEqual(catalog.namespaceStats, NAMESPACES.map((name) => ({ name,
++    ...totals(MINARI_DATASETS.filter((dataset) => dataset.namespace === name)),
++  })))
++})

@@ -1,0 +1,8 @@
+{
+  "name": "minariviz-performance-tools",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "playwright-core": "1.56.1"
+  }
+}
