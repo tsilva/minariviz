@@ -3,6 +3,6 @@ mistralai!=2.4.6
 guardrails-ai!=0.10.1
 
 # Minimum patched versions required by the production dependency audit.
-certifi>=2026.10.19
+certifi>=2026.10.23
 filelock>=4.2.1
 pillow>=13.0.0
