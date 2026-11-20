@@ -75,7 +75,7 @@ jobs:
     with:
       project_id: prj_5DAokXNN12fA1l2deCCQGcLZCCr8
       project_name: minariviz
-      production_domains: '["minariviz.tsilva.eu","v0-minariviz.vercel.app"]'
+      production_domains: '["minariviz.tsilva.eu"]'
       public_environment: '["NEXT_PUBLIC_API_URL","NEXT_PUBLIC_GA_MEASUREMENT_ID","NEXT_PUBLIC_SENTRY_DSN","SENTRY_ENVIRONMENT","SENTRY_ORG","SENTRY_PROJECT"]'
       source_maps: true
       promote: ${{ !inputs.stage_prebuilt }}
